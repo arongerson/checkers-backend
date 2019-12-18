@@ -19,6 +19,7 @@ public final class MessageDecoder implements Decoder.Text<Message> {
     @Override
     public Message decode(final String arg0) throws DecodeException {
         try {
+        	System.out.println("Message: " + arg0);
             return Constants.MAPPER.readValue(arg0, Message.class);
         } catch (IOException e) {
             throw new DecodeException(arg0, "Unable to decode text to Message", e);
