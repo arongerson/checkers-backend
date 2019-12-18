@@ -12,12 +12,12 @@ import javax.websocket.CloseReason.CloseCodes;
 import javax.websocket.EncodeException;
 import javax.websocket.Session;
 
-final class ChatSessionManager {
+final class CheckersSessionManager {
 
     private static final Lock LOCK = new ReentrantLock();
     private static final Set<Session> SESSIONS = new CopyOnWriteArraySet<>();
 
-    private ChatSessionManager() {
+    private CheckersSessionManager() {
         throw new IllegalStateException(Constants.INSTANTIATION_NOT_ALLOWED);
     }
 

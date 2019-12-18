@@ -20,10 +20,10 @@ public final class Connect {
             throw new RegistrationFailedException("User name is required");
         } else {
             session.getUserProperties().put(Constants.USER_NAME_KEY, userName);
-            if (ChatSessionManager.register(session)) {
+            if (CheckersSessionManager.register(session)) {
                 System.out.printf("Session opened for %s\n", userName);
  
-                ChatSessionManager.publish(new Message((String) session.getUserProperties().get(Constants.USER_NAME_KEY), "***joined the chat***"), session);
+                CheckersSessionManager.publish(new Message((String) session.getUserProperties().get(Constants.USER_NAME_KEY), "***joined the chat***"), session);
             } else {
                 throw new RegistrationFailedException("Unable to register, username already exists, try another");
             }
@@ -33,20 +33,20 @@ public final class Connect {
     @OnError
     public void onError(final Session session, final Throwable throwable) {
         if (throwable instanceof RegistrationFailedException) {
-            ChatSessionManager.close(session, CloseCodes.VIOLATED_POLICY, throwable.getMessage());
+            CheckersSessionManager.close(session, CloseCodes.VIOLATED_POLICY, throwable.getMessage());
         }
     }
  
     @OnMessage
     public void onMessage(final Message message, final Session session) {
-        ChatSessionManager.publish(message, session);
+        CheckersSessionManager.publish(message, session);
     }
     
     @OnClose
     public void onClose(final Session session) {
-        if (ChatSessionManager.remove(session)) {
+        if (CheckersSessionManager.remove(session)) {
             System.out.printf("Session closed for %s\n", session.getUserProperties().get(Constants.USER_NAME_KEY));
-            ChatSessionManager.publish(new Message((String) session.getUserProperties().get(Constants.USER_NAME_KEY), "***left the chat***"), session);
+            CheckersSessionManager.publish(new Message((String) session.getUserProperties().get(Constants.USER_NAME_KEY), "***left the chat***"), session);
         }
     }
  
