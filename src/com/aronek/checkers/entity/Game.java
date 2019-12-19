@@ -1,6 +1,19 @@
 package com.aronek.checkers.entity;
 
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import javax.websocket.EncodeException;
+import javax.websocket.Session;
+
+
+import com.aronek.checkers.CheckersSessionManager;
+import com.aronek.checkers.Constants;
+import com.aronek.checkers.Message;
+import com.aronek.checkers.model.Action;
+import com.aronek.checkers.model.RandomString;
 
 public class Game {
 	
@@ -86,6 +99,13 @@ public class Game {
 
 	public void setChats(List<Chat> chats) {
 		this.chats = chats;
+	}
+	
+	public Player getOtherPlayer(Player player) {
+		if (player == creator) {
+			return joiner;
+		}
+		return creator;
 	}
 	
 	public enum Status {

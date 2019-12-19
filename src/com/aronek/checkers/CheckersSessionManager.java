@@ -18,15 +18,12 @@ import com.aronek.checkers.entity.Game;
 import com.aronek.checkers.entity.Player;
 import com.aronek.checkers.model.RandomString;
 
-final class CheckersSessionManager {
+public final class CheckersSessionManager {
 
     private static final Lock LOCK = new ReentrantLock();
     private static final Set<Session> SESSIONS = new CopyOnWriteArraySet<>();
-    public static final long MAX_NUMBER_OF_GAMES = 1000000L;
-    
-    private static Map<Long, Game> games = new HashMap<Long, Game>();
-    private static Map<String, Player> players = new HashMap<String, Player>();
-    private static RandomString randomString = new RandomString(32);
+//    private static Map<String, Player> players = new HashMap<String, Player>();
+//    private static RandomString randomString = new RandomString(32);
 
     private CheckersSessionManager() {
         throw new IllegalStateException(Constants.INSTANTIATION_NOT_ALLOWED);
@@ -65,28 +62,7 @@ final class CheckersSessionManager {
 //        return result;
 //    }
     
-    public synchronized static long getGameId() throws Exception { 
-        for (long id = 0; id < MAX_NUMBER_OF_GAMES; id++) {
-        	if (!games.containsKey(id)) {
-        		return id;
-        	}
-        }
-        throw new Exception("max games reached, try again later");
-    }
     
-    // synchronized to ensure the id is not generated while the method is running
-    public synchronized static Player getPlayer(String token) throws Exception { 
-        return players.get(token);
-    }
-    
-    public synchronized static String generatePlayerToken() throws Exception { 
-        while (true) {
-        	String token = randomString.nextString(); 
-        	if (!players.containsKey(token)) {
-        		return token;
-        	}
-        }
-    }
     
     public static void close(final Session session, final CloseCodes closeCode, final String message) {
         assert !Objects.isNull(session) && !Objects.isNull(closeCode);

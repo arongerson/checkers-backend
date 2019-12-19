@@ -1,9 +1,6 @@
 package com.aronek.checkers;
 
-import java.io.IOException;
-
 import javax.websocket.CloseReason.CloseCodes;
-import javax.websocket.EncodeException;
 import javax.websocket.EndpointConfig;
 import javax.websocket.OnClose;
 import javax.websocket.OnError;
@@ -13,6 +10,8 @@ import javax.websocket.Session;
 import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 
+import com.aronek.checkers.entity.Checkers;
+import com.aronek.checkers.entity.Game;
 import com.aronek.checkers.entity.Player;
 import com.aronek.checkers.model.Action;
 
@@ -25,11 +24,19 @@ public final class Connect {
     		final Session session, 
     		EndpointConfig endConfig) throws Exception { 
     	
-    	Player player = CheckersSessionManager.getPlayer(token);
+    	Player player = Checkers.getPlayer(token);
     	if (player == null) {
-    		String tokenId = CheckersSessionManager.generatePlayerToken();
+    		String tokenId = Checkers.generatePlayerToken();
+    		session.getUserProperties().put(Constants.TOKEN, tokenId);
     		CheckersSessionManager.publish(new Message(Action.CONNECT.getNumber(), tokenId), session);
     	} else {
+    		// update the game status to the connected player
+    		CheckersSessionManager.publish(
+    				new Message(Action.PLAY.getNumber(), "welcome back"), session);
+    		// update session properties
+    		session.getUserProperties().put(Constants.TOKEN, token);
+    		session.getUserProperties().put(Constants.PLAYER, player);
+    		// inform the other player of the connection
     		player.setSession(session);
     		Player otherPlayer = player.getOtherPlayer();
     		CheckersSessionManager.publish(
@@ -45,14 +52,13 @@ public final class Connect {
     }
  
     @OnMessage
-    public void onMessage(final Message message, final Session session) throws IOException, EncodeException { 
+    public void onMessage(final Message message, final Session session) throws Exception { 
         // CheckersSessionManager.publish(message, session);
     	int code = message.getCode();
         if (code == Action.CREATE.getNumber()) {
-        	CheckersSessionManager.publish(new Message(Action.CREATE.getNumber(), "game created"), session);
-        	// System.out.println("creating the game");
+        	Checkers.createGame(message.getData(), session);
         } else if (code == Action.JOIN.getNumber()) {
-        	CheckersSessionManager.publish(new Message(Action.JOIN.getNumber(), "game joined"), session);
+        	Checkers.joinGame(message.getData(), session);
         } else if (code == Action.REGISTER.getNumber()) {
         	// future version
         } else if (code == Action.LOGIN.getNumber()) {
