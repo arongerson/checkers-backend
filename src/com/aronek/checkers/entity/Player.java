@@ -17,6 +17,10 @@ public class Player {
 	public String getName() {
 		return name;
 	}
+	
+	public void setSession(Session session) {
+		this.session = session;
+	}
 
 	public Session getSession() {
 		return session;
@@ -24,6 +28,13 @@ public class Player {
 	
 	public Game getGame() {
 		return game;
+	}
+
+	public Player getOtherPlayer() {
+		if (game.getCreator() == this) {
+			return game.getJoiner();
+		}
+		return game.getCreator();
 	}
 	
 }

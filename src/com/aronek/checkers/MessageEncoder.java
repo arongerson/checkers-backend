@@ -20,7 +20,7 @@ public final class MessageEncoder implements Encoder.Text<Message> {
     public String encode(final Message message) throws EncodeException {
         try {
             String s = Constants.MAPPER.writeValueAsString(message);
-            System.out.println("Message: " + s);
+            // System.out.println("Message: " + s);
             return s;
         } catch (JsonProcessingException e) {
             throw new EncodeException(message, "Unable to encode message", e);

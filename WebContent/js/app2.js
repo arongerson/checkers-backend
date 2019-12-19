@@ -3,19 +3,17 @@ var websocket = null;
 
 function init() {
 	if ("WebSocket" in window) {
-//		while (userName === null) {
-//			userName = prompt("Enter user name");
-//		}
+		while (userName === null) {
+			userName = prompt("Enter user name");
+		}
 
-		websocket = new WebSocket('ws://localhost:8080/Checkers/connect/8');
+		websocket = new WebSocket('ws://localhost:8080/Checkers/' + userName);
 		websocket.onopen = function(data) {
-			console.log("Hello: " + JSON.stringify(data.data) )
 			document.getElementById("main").style.display = "block";
 		};
 
 		websocket.onmessage = function(data) {
-			console.log("Hello: " + data.data);
-			// setMessage(JSON.parse(data.data));
+			setMessage(JSON.parse(data.data));
 		};
 
 		websocket.onerror = function(e) {

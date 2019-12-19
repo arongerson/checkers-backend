@@ -1,8 +1,10 @@
 package com.aronek.checkers;
 
-import java.util.Objects;
+import java.io.IOException;
 
 import javax.websocket.CloseReason.CloseCodes;
+import javax.websocket.EncodeException;
+import javax.websocket.EndpointConfig;
 import javax.websocket.OnClose;
 import javax.websocket.OnError;
 import javax.websocket.OnMessage;
@@ -11,23 +13,28 @@ import javax.websocket.Session;
 import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 
-@ServerEndpoint(value = "/{username}", encoders = MessageEncoder.class, decoders = MessageDecoder.class)
+import com.aronek.checkers.entity.Player;
+import com.aronek.checkers.model.Action;
+
+@ServerEndpoint(value = "/connect/{token}", encoders = MessageEncoder.class, decoders = MessageDecoder.class)
 public final class Connect {
- 
+    
     @OnOpen
-    public void onOpen(@PathParam(Constants.USER_NAME_KEY) final String userName, final Session session) {
-        if (Objects.isNull(userName) || userName.isEmpty()) {
-            throw new RegistrationFailedException("User name is required");
-        } else {
-            session.getUserProperties().put(Constants.USER_NAME_KEY, userName);
-            if (CheckersSessionManager.register(session)) {
-                System.out.printf("Session opened for %s\n", userName);
- 
-                CheckersSessionManager.publish(new Message((String) session.getUserProperties().get(Constants.USER_NAME_KEY), "***joined the chat***"), session);
-            } else {
-                throw new RegistrationFailedException("Unable to register, username already exists, try another");
-            }
-        }
+    public void onOpen(
+    		@PathParam("token") final String token, 
+    		final Session session, 
+    		EndpointConfig endConfig) throws Exception { 
+    	
+    	Player player = CheckersSessionManager.getPlayer(token);
+    	if (player == null) {
+    		String tokenId = CheckersSessionManager.generatePlayerToken();
+    		CheckersSessionManager.publish(new Message(Action.CONNECT.getNumber(), tokenId), session);
+    	} else {
+    		player.setSession(session);
+    		Player otherPlayer = player.getOtherPlayer();
+    		CheckersSessionManager.publish(
+    				new Message(Action.OTHER_RECONNECT.getNumber(), player.getName() + " is back"), otherPlayer.getSession());
+    	}
     }
  
     @OnError
@@ -38,15 +45,34 @@ public final class Connect {
     }
  
     @OnMessage
-    public void onMessage(final Message message, final Session session) {
-        CheckersSessionManager.publish(message, session);
+    public void onMessage(final Message message, final Session session) throws IOException, EncodeException { 
+        // CheckersSessionManager.publish(message, session);
+    	int code = message.getCode();
+        if (code == Action.CREATE.getNumber()) {
+        	CheckersSessionManager.publish(new Message(Action.CREATE.getNumber(), "game created"), session);
+        	// System.out.println("creating the game");
+        } else if (code == Action.JOIN.getNumber()) {
+        	CheckersSessionManager.publish(new Message(Action.JOIN.getNumber(), "game joined"), session);
+        } else if (code == Action.REGISTER.getNumber()) {
+        	// future version
+        } else if (code == Action.LOGIN.getNumber()) {
+        	// future version
+        } else if (code == Action.CHAT.getNumber()) {
+        	
+        } else if (code == Action.PLAY.getNumber()) {
+        } else if (code == Action.LEAVE.getNumber()) {
+        } else if (code == Action.RESTART.getNumber()) {
+        } else if (code == Action.CONNECT.getNumber()) {
+        } else if (code == Action.OTHER_RECONNECT.getNumber()) {
+        } else {
+        	CheckersSessionManager.publish(new Message(Action.ERROR.getNumber(), "invalid code"), session);
+        }
     }
     
     @OnClose
     public void onClose(final Session session) {
+    	System.out.println("closing the connection");
         if (CheckersSessionManager.remove(session)) {
-            System.out.printf("Session closed for %s\n", session.getUserProperties().get(Constants.USER_NAME_KEY));
-            CheckersSessionManager.publish(new Message((String) session.getUserProperties().get(Constants.USER_NAME_KEY), "***left the chat***"), session);
         }
     }
  

@@ -7,24 +7,25 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public final class Message {
 
-    @JsonProperty("username")
-    private final String userName;
-    @JsonProperty
-    private final String message;
+    @JsonProperty("code")
+    private final int code;
+    
+    @JsonProperty("data")
+    private final String data;
 
     @JsonCreator
-    public Message(@JsonProperty("username") final String userName, @JsonProperty("message") final String message) {
-        Objects.requireNonNull(userName);
-        Objects.requireNonNull(message);
-        this.userName = userName;
-        this.message = message;
+    public Message(@JsonProperty("code") final int code, @JsonProperty("data") final String data) {
+        Objects.requireNonNull(code);
+        Objects.requireNonNull(data);
+        this.code = code;
+        this.data = data;
     }
 
-    String getUserName() {
-        return this.userName;
+    public int getCode() {
+        return this.code;
     }
 
-    String getMessage() {
-        return this.message;
+    public String getData() {
+        return this.data;
     }
 }

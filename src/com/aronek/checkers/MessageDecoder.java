@@ -19,7 +19,7 @@ public final class MessageDecoder implements Decoder.Text<Message> {
     @Override
     public Message decode(final String arg0) throws DecodeException {
         try {
-        	System.out.println("Message: " + arg0);
+        	// System.out.println("Message: " + arg0);
             return Constants.MAPPER.readValue(arg0, Message.class);
         } catch (IOException e) {
             throw new DecodeException(arg0, "Unable to decode text to Message", e);
@@ -28,6 +28,6 @@ public final class MessageDecoder implements Decoder.Text<Message> {
  
     @Override
     public boolean willDecode(final String arg0) {
-        return arg0.contains(Constants.USER_NAME_KEY) && arg0.contains(Constants.MESSAGE_KEY);
+        return arg0.contains(Constants.CODE_KEY) && arg0.contains(Constants.DATA_KEY);
     }
 }
