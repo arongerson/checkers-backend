@@ -68,7 +68,6 @@ public class Checkers {
 		Map<String, Object> board = getPlayFeedback(game);
 		updatePlay(game.getCreator(), board);
 		updatePlay(game.getJoiner(), board);
-		// create game board and update the players with new status
 	}
 
 	public static void updatePlay(Player player, Map<String, Object> board) throws IOException, EncodeException {
