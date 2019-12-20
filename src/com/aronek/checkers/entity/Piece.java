@@ -1,8 +1,15 @@
 package com.aronek.checkers.entity;
 
+import com.google.gson.annotations.Expose;
+
 public class Piece {
+	
 	private Checker checker;
+	
+	@Expose(serialize = true)
 	private Player owner;
+	
+	@Expose(serialize = true)
 	private Type type;
 	
 	public Piece(Player owner) {

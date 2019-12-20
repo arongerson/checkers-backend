@@ -1,19 +1,7 @@
 package com.aronek.checkers.entity;
 
-import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
-import javax.websocket.EncodeException;
-import javax.websocket.Session;
-
-
-import com.aronek.checkers.CheckersSessionManager;
-import com.aronek.checkers.Constants;
-import com.aronek.checkers.Message;
-import com.aronek.checkers.model.Action;
-import com.aronek.checkers.model.RandomString;
+import com.aronek.checkers.entity.Piece.Type;
 
 public class Game {
 	
@@ -29,6 +17,7 @@ public class Game {
 	public Game(Player creator, long id) {
 		this.id = id;
 		this.creator = creator;
+		this.setStatus(Status.NEW);
 	}
 
 
@@ -59,6 +48,7 @@ public class Game {
 
 	public void setJoiner(Player joiner) {
 		this.joiner = joiner;
+		joiner.setGame(this); 
 	}
 
 
@@ -110,6 +100,38 @@ public class Game {
 	
 	public enum Status {
 		NEW, READY, STARTED, OVER
+	}
+
+	public void initBoard() {
+		status = Status.READY;
+		initCheckers();
+		// creator pieces begin at row 0 of the board
+		initPieces(0, creator);
+		// joiner pieces begin at row 5
+		initPieces(5, joiner);
+	}
+
+	private void initPieces(int startRow, Player owner) {
+		for (int row = startRow; row < startRow + 3; row++) {
+			for (int col = 0; col < 8; col++) {
+				if ((row + col) % 2 == 0) {
+					Checker checker = checkers[row][col];
+					Piece piece = new Piece(owner);
+					piece.setType(Type.NORMAL);
+					piece.setChecker(checker);
+					checker.setPiece(piece); 
+				}
+			}
+		}
+	}
+
+	private void initCheckers() {
+		checkers = new Checker[8][8];
+		for (int i = 0; i < 8; i++) {
+			for (int j = 0; j < 8; j++) {
+				checkers[i][j] = new Checker(i, j);
+			}
+		}
 	}
 	
 }

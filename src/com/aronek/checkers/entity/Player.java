@@ -1,16 +1,27 @@
 package com.aronek.checkers.entity;
 
+import java.io.Serializable;
+
 import javax.websocket.Session;
 
-public class Player {
-	
+import com.google.gson.annotations.Expose;
+
+public class Player implements Serializable {
+
+	private static final long serialVersionUID = 1L;
 	public static final int CREATOR_ID = 0;
 	public static final int JOINER_ID = 1;
 	
+	@Expose(serialize = true)
 	private String name;
+	
+	@Expose(serialize = true)
 	private int id;
-	private Session session;
+	
+	private transient Session session;
 	private Game game;
+	
+	public Player() {}
 	
 	public Player(Session session, String name, int id) {
 		this.session = session;

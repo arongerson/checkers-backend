@@ -1,5 +1,7 @@
 package com.aronek.checkers;
 
+import java.util.Map;
+
 import javax.websocket.CloseReason.CloseCodes;
 import javax.websocket.EndpointConfig;
 import javax.websocket.OnClose;
@@ -30,17 +32,21 @@ public final class Connect {
     		session.getUserProperties().put(Constants.TOKEN, tokenId);
     		CheckersSessionManager.publish(new Message(Action.CONNECT.getNumber(), tokenId), session);
     	} else {
-    		// update the game status to the connected player
-    		CheckersSessionManager.publish(
-    				new Message(Action.PLAY.getNumber(), "welcome back"), session);
-    		// update session properties
     		session.getUserProperties().put(Constants.TOKEN, token);
     		session.getUserProperties().put(Constants.PLAYER, player);
-    		// inform the other player of the connection
     		player.setSession(session);
-    		Player otherPlayer = player.getOtherPlayer();
-    		CheckersSessionManager.publish(
-    				new Message(Action.OTHER_RECONNECT.getNumber(), player.getName() + " is back"), otherPlayer.getSession());
+    		if (player.getGame() != null && player.getGame().getStatus() != Game.Status.NEW) {
+    			System.out.println("update play");
+    			Map<String, Object> board = Checkers.getPlayFeedback(player.getGame());
+    			// inform the other player of the connection
+        		Player otherPlayer = player.getOtherPlayer();
+        		CheckersSessionManager.publish(
+        				new Message(Action.OTHER_RECONNECT.getNumber(), player.getName() + " is back"), otherPlayer.getSession());
+    			Checkers.updatePlay(player, board);
+    		} else {
+    			CheckersSessionManager.publish(
+        				new Message(Action.INFO.getNumber(), "welcome back"), session);
+    		}
     	}
     }
  
@@ -79,6 +85,7 @@ public final class Connect {
     public void onClose(final Session session) {
     	System.out.println("closing the connection");
         if (CheckersSessionManager.remove(session)) {
+        	
         }
     }
  
