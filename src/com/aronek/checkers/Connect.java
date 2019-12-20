@@ -98,16 +98,13 @@ public final class Connect {
         } else if (code == Action.JOIN.getNumber()) {
         	Checkers.joinGame(message.getData(), session);
         } else if (code == Action.REGISTER.getNumber()) {
-        	// future version
         } else if (code == Action.LOGIN.getNumber()) {
-        	// future version
         } else if (code == Action.CHAT.getNumber()) {
-        	
         } else if (code == Action.PLAY.getNumber()) {
         } else if (code == Action.LEAVE.getNumber()) {
+        	Checkers.leaveGame(session);
         } else if (code == Action.RESTART.getNumber()) {
         } else if (code == Action.CONNECT.getNumber()) {
-        } else if (code == Action.OTHER_RECONNECT.getNumber()) {
         } else {
         	CheckersSessionManager.publish(new Message(Action.ERROR.getNumber(), "invalid code"), session);
         }

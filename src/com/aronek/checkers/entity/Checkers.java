@@ -57,7 +57,7 @@ public class Checkers {
 		JsonObject jsonObject = parseData(data);
 		Game game = getGame(jsonObject);
 		Player joiner = createJoiner(session, jsonObject, game);
-		Player creator = game.getOtherPlayer(joiner);
+		Player creator = game.getCreator();
 		game.initBoard();
 		game.setPlayerInTurn(creator); 
 		Map<String, Object> creatorFeedback = getInfoFeedback(String.format("%s has joined the game", joiner.getName()));
@@ -140,5 +140,36 @@ public class Checkers {
         }
         throw new Exception("max games reached, try again later");
     }
+
+	public static void leaveGame(Session session) throws IOException, EncodeException { 
+		String token = getSessionToken(session);
+		Player player = players.get(token);
+		if (player.isCreator()) {
+			deleteGame(player);
+		} else {
+			removePlayerFromTheGame(player);
+		}
+	}
+
+	private static void removePlayerFromTheGame(Player player) {
+		
+	}
+
+	private static void deleteGame(Player creator) throws IOException, EncodeException {
+		Game game = creator.getGame();
+		Player joiner = game.getJoiner();
+		games.remove(game.getId());
+		clearSessionAttributes(creator.getSession());
+		clearSessionAttributes(joiner.getSession());
+		players.remove(getSessionToken(creator.getSession()));
+		players.remove(getSessionToken(joiner.getSession()));
+		sendMessage(creator.getSession(), Action.INFO.getNumber(), getInfoFeedback("game terminated"));
+		sendMessage(joiner.getSession(), Action.INFO.getNumber(), getInfoFeedback("game terminated by the creator"));
+	}
+
+	private static void clearSessionAttributes(Session session) {
+		session.getUserProperties().remove(Constants.PLAYER);
+		session.getUserProperties().remove(Constants.TOKEN);
+	}
 
 }
