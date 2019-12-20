@@ -147,12 +147,18 @@ public class Checkers {
 		if (player.isCreator()) {
 			deleteGame(player);
 		} else {
-			removePlayerFromTheGame(player);
+			removeJoinerFromTheGame(player);
 		}
 	}
 
-	private static void removePlayerFromTheGame(Player player) {
-		
+	private static void removeJoinerFromTheGame(Player joiner) throws IOException, EncodeException {
+		Game game = joiner.getGame();
+		game.setStatus(Game.Status.NEW);
+		Player creator = game.getCreator();
+		clearSessionAttributes(joiner.getSession());
+		players.remove(getSessionToken(joiner.getSession()));
+		sendMessage(creator.getSession(), Action.INFO.getNumber(), getInfoFeedback(String.format("%s left the game", joiner.getName()))); 
+		sendMessage(joiner.getSession(), Action.INFO.getNumber(), getInfoFeedback("Closing the game"));
 	}
 
 	private static void deleteGame(Player creator) throws IOException, EncodeException {
@@ -164,7 +170,7 @@ public class Checkers {
 		players.remove(getSessionToken(creator.getSession()));
 		players.remove(getSessionToken(joiner.getSession()));
 		sendMessage(creator.getSession(), Action.INFO.getNumber(), getInfoFeedback("game terminated"));
-		sendMessage(joiner.getSession(), Action.INFO.getNumber(), getInfoFeedback("game terminated by the creator"));
+		sendMessage(joiner.getSession(), Action.CLOSE.getNumber(), getInfoFeedback("game terminated by the creator"));
 	}
 
 	private static void clearSessionAttributes(Session session) {
