@@ -101,9 +101,12 @@ public class Game {
 	public enum Status {
 		NEW, READY, STARTED, OVER
 	}
+	
+	public void setStarted() {
+		status = Status.STARTED;
+	}
 
 	public void initBoard() {
-		status = Status.READY;
 		initCheckers();
 		// creator pieces begin at row 0 of the board
 		initPieces(0, creator);
@@ -114,10 +117,10 @@ public class Game {
 	private void initPieces(int startRow, Player owner) {
 		for (int row = startRow; row < startRow + 3; row++) {
 			for (int col = 0; col < 8; col++) {
-				if ((row + col) % 2 == 0) {
+				if ((row + col) % 2 == 1) {
 					Checker checker = checkers[row][col];
 					Piece piece = new Piece(owner);
-					piece.setType(Type.NORMAL);
+					piece.setType(Type.NORMAL.getNumber());
 					piece.setChecker(checker);
 					checker.setPiece(piece); 
 				}
@@ -131,6 +134,23 @@ public class Game {
 			for (int j = 0; j < 8; j++) {
 				checkers[i][j] = new Checker(i, j);
 			}
+		}
+	}
+
+
+	public boolean isCreator(Player player) {
+		return player == creator;
+	}
+
+
+	public boolean isNew() {
+		return status == Status.NEW;
+	}
+
+
+	public void throwExceptionIfNotStartable() throws Exception { 
+		if (joiner == null || status != Status.OVER) {
+			throw new Exception("not allowed");
 		}
 	}
 	

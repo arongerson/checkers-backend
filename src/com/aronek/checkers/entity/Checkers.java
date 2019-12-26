@@ -11,6 +11,7 @@ import javax.websocket.Session;
 import com.aronek.checkers.CheckersSessionManager;
 import com.aronek.checkers.Constants;
 import com.aronek.checkers.Message;
+import com.aronek.checkers.entity.Game.Status;
 import com.aronek.checkers.model.Action;
 import com.aronek.checkers.model.RandomString;
 import com.google.gson.Gson;
@@ -53,41 +54,61 @@ public class Checkers {
 		return feedback;
 	}
 	
-	public static void joinGame(String data, Session session) throws IOException, EncodeException { 
+	public static void joinGame(String data, Session session) throws Exception { 
+		System.out.println(data);
 		JsonObject jsonObject = parseData(data);
 		Game game = getGame(jsonObject);
-		Player joiner = createJoiner(session, jsonObject, game);
-		Player creator = game.getCreator();
+		System.out.println("code: " + game.getId());
+		synchronized (game) {
+			// prevent more than one player to join the game 
+			createJoiner(session, jsonObject, game); 
+		}
 		game.initBoard();
-		game.setPlayerInTurn(creator); 
-		Map<String, Object> creatorFeedback = getInfoFeedback(String.format("%s has joined the game", joiner.getName()));
-		sendMessage(creator.getSession(), Action.INFO.getNumber(), creatorFeedback);
+		game.setStarted();
+		game.setPlayerInTurn(game.getJoiner()); 
+		updateNewGame(session, game);
+	}
+
+	private static void updateNewGame(Session session, Game game) throws IOException, EncodeException {
+		Map<String, Object> creatorFeedback = getInfoFeedback(String.format("%s has joined the game", game.getJoiner().getName()));
+		sendMessage(game.getCreator().getSession(), Action.INFO.getNumber(), creatorFeedback);
 		Map<String, Object> joinerFeedback = new HashMap<String, Object>();
 		joinerFeedback.put("playerId", Player.JOINER_ID);
 		sendMessage(session, Action.JOIN.getNumber(), joinerFeedback);
+		updatePlay(game);
+	}
+
+	private static void updatePlay(Game game) throws IOException, EncodeException {
 		Map<String, Object> board = getPlayFeedback(game);
 		updatePlay(game.getCreator(), board);
 		updatePlay(game.getJoiner(), board);
 	}
-
+	
 	public static void updatePlay(Player player, Map<String, Object> board) throws IOException, EncodeException {
 		System.out.println("updating the player...");
-		sendMessage(player.getSession(), Action.PLAY.getNumber(), board); 
+		sendMessage(player.getSession(), Action.STATE.getNumber(), board); 
 	}
 
 	public static Map<String, Object> getPlayFeedback(Game game) {
 		Map<String, Object> board = new HashMap<String, Object>();
 		board.put("turn", game.getPlayerInTurn().getId());
-		System.out.println("creator: " + game.getCreator().getName());
 		board.put("checkers", game.getCheckers());
 		return board;
 	}
 
-	private static Player createJoiner(Session session, JsonObject jsonObject, Game game) {
-		String playerName = jsonObject.get("name").getAsString();
-		Player joiner = createPlayer(playerName, session, Player.JOINER_ID);
-		game.setJoiner(joiner);
-		return joiner;
+	private static Player createJoiner(Session session, JsonObject jsonObject, Game game) throws Exception { 
+		if (game.isNew()) {
+			String playerName = jsonObject.get("name").getAsString();
+			System.out.println("name: " + playerName);
+			Player joiner = createPlayer(playerName, session, Player.JOINER_ID);
+			System.out.println("created: " + playerName);
+			game.setJoiner(joiner);
+			game.setStatus(Status.READY);
+			System.out.println("creating joiner new");
+			return joiner;
+		}
+		System.out.println("not allowed");
+		throw new Exception("not allowed to join the game.");
 	}
 
 	private static JsonObject parseData(String data) {
@@ -176,6 +197,23 @@ public class Checkers {
 	private static void clearSessionAttributes(Session session) {
 		session.getUserProperties().remove(Constants.PLAYER);
 		session.getUserProperties().remove(Constants.TOKEN);
+	}
+
+	public static void restartGame(Session session) throws Exception {
+		String token = getSessionToken(session);
+		Player creator = players.get(token);
+		Game game = creator.getGame();
+		game.throwExceptionIfNotStartable();
+		game.initBoard();
+		game.setStarted();
+		Map<String, Object> infoFeedback = getInfoFeedback("game restarted");
+		sendMessage(creator.getSession(), Action.INFO.getNumber(), infoFeedback);
+		sendMessage(game.getJoiner().getSession(), Action.INFO.getNumber(), infoFeedback);
+		updatePlay(game);
+	}
+
+	public static void play(Session session) {
+		System.out.println("playing...");
 	}
 
 }

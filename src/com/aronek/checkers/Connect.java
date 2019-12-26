@@ -27,7 +27,6 @@ public final class Connect {
     		@PathParam("token") final String token, 
     		final Session session, 
     		EndpointConfig endConfig) throws Exception { 
-    	
     	Player player = Checkers.getPlayer(token);
     	if (!playerExists(player)) {
     		createNewToken(session);
@@ -101,9 +100,11 @@ public final class Connect {
         } else if (code == Action.LOGIN.getNumber()) {
         } else if (code == Action.CHAT.getNumber()) {
         } else if (code == Action.PLAY.getNumber()) {
+        	Checkers.play(session);
         } else if (code == Action.LEAVE.getNumber()) {
         	Checkers.leaveGame(session);
         } else if (code == Action.RESTART.getNumber()) {
+        	Checkers.restartGame(session);
         } else if (code == Action.CONNECT.getNumber()) {
         } else {
         	CheckersSessionManager.publish(new Message(Action.ERROR.getNumber(), "invalid code"), session);
@@ -119,8 +120,5 @@ public final class Connect {
  
         private static final long serialVersionUID = 1L;
  
-        public RegistrationFailedException(final String message) {
-            super(message);
-        }
     }
 }

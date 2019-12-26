@@ -9,8 +9,10 @@ import com.google.gson.annotations.Expose;
 public class Player implements Serializable {
 
 	private static final long serialVersionUID = 1L;
-	public static final int CREATOR_ID = 0;
-	public static final int JOINER_ID = 1;
+	// 1 and -1 simplify the login since the creator plays in the direction of increasing row numbers
+	// while the joiner plays in the order of decreasing row numbers
+	public static final int CREATOR_ID = 1;
+	public static final int JOINER_ID = -1;
 	
 	@Expose(serialize = true)
 	private String name;
@@ -59,6 +61,10 @@ public class Player implements Serializable {
 
 	public Player getOtherPlayer() {
 		return game.getOtherPlayer(this);
+	}
+
+	public boolean isCreator() {
+		return game.isCreator(this);
 	}
 	
 }

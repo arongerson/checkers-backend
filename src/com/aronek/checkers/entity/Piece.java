@@ -10,7 +10,7 @@ public class Piece {
 	private Player owner;
 	
 	@Expose(serialize = true)
-	private Type type;
+	private int type;
 	
 	public Piece(Player owner) {
 		this.owner = owner;
@@ -28,15 +28,26 @@ public class Piece {
 	public void setOwner(Player owner) {
 		this.owner = owner;
 	}
-	public Type getType() {
+	public int getType() {
 		return type;
 	}
-	public void setType(Type type) {
+	public void setType(int type) {
 		this.type = type;
 	}
 	
 	public enum Type {
-		NORMAL, KING
+		
+		NORMAL(1), KING(2);
+		
+		private final int number;
+		
+		private Type(final int number) {
+			this.number = number;
+		}
+		
+		public final int getNumber() {
+	        return this.number;
+	    }
 	}
 	
 }
