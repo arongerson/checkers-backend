@@ -16,6 +16,7 @@ import com.aronek.checkers.model.Action;
 import com.aronek.checkers.model.RandomString;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -56,7 +57,7 @@ public class Checkers {
 	
 	public static void joinGame(String data, Session session) throws Exception { 
 		System.out.println(data);
-		JsonObject jsonObject = parseData(data);
+		JsonObject jsonObject = parseToJsonObject(data);
 		Game game = getGame(jsonObject);
 		System.out.println("code: " + game.getId());
 		synchronized (game) {
@@ -111,8 +112,12 @@ public class Checkers {
 		throw new Exception("not allowed to join the game.");
 	}
 
-	private static JsonObject parseData(String data) {
+	private static JsonObject parseToJsonObject(String data) {
 		return JsonParser.parseString(data).getAsJsonObject();
+	}
+	
+	private static JsonArray parseToJsonArray(String data) {
+		return JsonParser.parseString(data).getAsJsonArray();
 	}
 
 	private static Game getGame(JsonObject jsonObject) {
@@ -212,8 +217,13 @@ public class Checkers {
 		updatePlay(game);
 	}
 
-	public static void play(Session session) {
+	public static void play(String data, Session session) throws Exception { 
 		System.out.println("playing...");
+		String token = getSessionToken(session);
+		Player player = players.get(token);
+		Game game = player.getGame();
+		JsonArray plays = parseToJsonArray(data);
+		game.updatePlay(player, plays);
 	}
 
 }

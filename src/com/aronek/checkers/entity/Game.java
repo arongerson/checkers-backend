@@ -2,6 +2,9 @@ package com.aronek.checkers.entity;
 
 import java.util.List;
 import com.aronek.checkers.entity.Piece.Type;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 public class Game {
 	
@@ -12,7 +15,6 @@ public class Game {
 	private Checker[][] checkers;
 	private Status status;
 	private List<Chat> chats;
-	
 	
 	public Game(Player creator, long id) {
 		this.id = id;
@@ -91,6 +93,10 @@ public class Game {
 		this.chats = chats;
 	}
 	
+	public int getLastRowIndex() {
+		return checkers.length - 1;
+	}
+	
 	public Player getOtherPlayer(Player player) {
 		if (player == creator) {
 			return joiner;
@@ -151,6 +157,99 @@ public class Game {
 	public void throwExceptionIfNotStartable() throws Exception { 
 		if (joiner == null || status != Status.OVER) {
 			throw new Exception("not allowed");
+		}
+	}
+
+
+	public synchronized void updatePlay(Player player, JsonArray plays) throws Exception {
+		throwExceptionIfNotPlayable();
+		throwExceptionIfNotInTurn(player);
+		for (int i = 0; i < plays.size(); i++) {
+			updatePlay(plays.get(i).getAsJsonObject());
+		}
+		processPlayCompleted(plays);
+		updatePlayerInTurn();
+		processGameCompleted();
+	}
+	
+	private void throwExceptionIfNotPlayable() throws Exception { 
+		if (status != Status.STARTED) {
+			throw new Exception("game not started");
+		}
+	}
+
+
+	private void updatePlayerInTurn() {
+		if (playerInTurn == creator) {
+			playerInTurn = joiner;
+		} else {
+			playerInTurn = creator;
+		}
+	}
+	
+	private void processGameCompleted() {
+		if (!hasPieces(creator) || !hasPieces(joiner) || !canPlay(creator) || !canPlay(joiner)) {
+			status = Status.OVER;
+		}
+	}
+
+	private boolean canPlay(Player creator2) {
+		return true;
+	}
+
+
+	private boolean hasPieces(Player creator2) {
+		return true;
+	}
+
+
+	private void processPlayCompleted(JsonArray plays) {
+		JsonObject lastPlay = plays.get(plays.size() - 1).getAsJsonObject();
+		JsonObject toPosition = lastPlay.get("to").getAsJsonObject();
+		Checker checker = getCheckerFromJsonPosition(toPosition);
+		Piece piece = checker.getPiece();
+		if (piece.isAtLastRow(getLastRowIndex())) {
+			piece.setType(Piece.Type.KING.getNumber());
+		}
+	}
+
+
+	private void updatePlay(JsonObject play) {
+		JsonObject fromPosition = play.get("from").getAsJsonObject();
+		JsonObject toPosition = play.get("to").getAsJsonObject();
+		JsonElement capturedPiecePosition = play.get("captured");
+		movePiece(fromPosition, toPosition);
+		updateCaptured(capturedPiecePosition);
+	}
+
+
+	private void movePiece(JsonObject fromPosition, JsonObject toPosition) {
+		Checker fromChecker = getCheckerFromJsonPosition(fromPosition);
+		Checker toChecker = getCheckerFromJsonPosition(toPosition);
+		toChecker.setPiece(fromChecker.getPiece());
+		fromChecker.setPiece(null);
+	}
+	
+	private Checker getCheckerFromJsonPosition(JsonObject position) {
+		int row = position.get("row").getAsInt();
+		int col = position.get("col").getAsInt();
+		return checkers[row][col];
+	}
+
+
+	private void updateCaptured(JsonElement capturedPiecePosition) {
+		if (!capturedPiecePosition.isJsonNull()) {
+			System.out.println(capturedPiecePosition);
+			JsonObject position = capturedPiecePosition.getAsJsonObject();
+			Checker checker = getCheckerFromJsonPosition(position);
+			checker.setPiece(null); 
+		}
+	}
+
+
+	private void throwExceptionIfNotInTurn(Player player) throws Exception {
+		if (player != playerInTurn) {
+			throw new Exception("Player not in turn");
 		}
 	}
 	

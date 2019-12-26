@@ -85,7 +85,11 @@ public final class Connect {
     @OnError
     public void onError(final Session session, final Throwable throwable) {
         if (throwable instanceof RegistrationFailedException) {
+        	System.out.println("We have an error");
             CheckersSessionManager.close(session, CloseCodes.VIOLATED_POLICY, throwable.getMessage());
+        } else {
+        	System.out.println("We have an error: " + throwable.getMessage());
+        	throwable.printStackTrace();
         }
     }
  
@@ -100,7 +104,7 @@ public final class Connect {
         } else if (code == Action.LOGIN.getNumber()) {
         } else if (code == Action.CHAT.getNumber()) {
         } else if (code == Action.PLAY.getNumber()) {
-        	Checkers.play(session);
+        	Checkers.play(message.getData(), session);
         } else if (code == Action.LEAVE.getNumber()) {
         	Checkers.leaveGame(session);
         } else if (code == Action.RESTART.getNumber()) {

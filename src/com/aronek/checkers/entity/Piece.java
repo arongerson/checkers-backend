@@ -35,6 +35,15 @@ public class Piece {
 		this.type = type;
 	}
 	
+	public boolean isAtLastRow(int lastRowIndex) {
+		if (owner.isCreator() && checker.isLastRow(lastRowIndex)) {
+			return true;
+		} else if (!owner.isCreator() && checker.isFirstRow()) {
+			return true;
+		}
+		return false;
+	}
+	
 	public enum Type {
 		
 		NORMAL(1), KING(2);

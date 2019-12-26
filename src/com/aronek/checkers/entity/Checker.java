@@ -33,4 +33,12 @@ public class Checker {
 	public Piece getPiece() {
 		return piece;
 	}
+
+	public boolean isLastRow(int lastRowIndex) {
+		return row == lastRowIndex;
+	}
+
+	public boolean isFirstRow() {
+		return row == 0;
+	}
 }
