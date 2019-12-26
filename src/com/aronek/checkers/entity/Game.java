@@ -193,13 +193,21 @@ public class Game {
 		}
 	}
 
-	private boolean canPlay(Player creator2) {
+	private boolean canPlay(Player player) {
 		return true;
 	}
 
 
-	private boolean hasPieces(Player creator2) {
-		return true;
+	private boolean hasPieces(Player player) {
+		for (int i = 0; i < checkers.length; i++) {
+			for (int j = 0; j < checkers[i].length; j++) {
+				Piece piece = checkers[i][j].getPiece();
+				if (piece != null && piece.getOwner() == player) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 
