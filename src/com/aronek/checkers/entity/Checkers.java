@@ -76,16 +76,16 @@ public class Checkers {
 		Map<String, Object> joinerFeedback = new HashMap<String, Object>();
 		joinerFeedback.put("playerId", Player.JOINER_ID);
 		sendMessage(session, Action.JOIN.getNumber(), joinerFeedback);
-		updatePlay(game);
+		updateGameStatus(game);
 	}
 
-	private static void updatePlay(Game game) throws IOException, EncodeException {
+	private static void updateGameStatus(Game game) throws IOException, EncodeException {
 		Map<String, Object> board = getPlayFeedback(game);
-		updatePlay(game.getCreator(), board);
-		updatePlay(game.getJoiner(), board);
+		updateStatus(game.getCreator(), board);
+		updateStatus(game.getJoiner(), board);
 	}
 	
-	public static void updatePlay(Player player, Map<String, Object> board) throws IOException, EncodeException {
+	public static void updateStatus(Player player, Map<String, Object> board) throws IOException, EncodeException {
 		System.out.println("updating the player...");
 		sendMessage(player.getSession(), Action.STATE.getNumber(), board); 
 	}
@@ -100,15 +100,11 @@ public class Checkers {
 	private static Player createJoiner(Session session, JsonObject jsonObject, Game game) throws Exception { 
 		if (game.isNew()) {
 			String playerName = jsonObject.get("name").getAsString();
-			System.out.println("name: " + playerName);
 			Player joiner = createPlayer(playerName, session, Player.JOINER_ID);
-			System.out.println("created: " + playerName);
 			game.setJoiner(joiner);
 			game.setStatus(Status.READY);
-			System.out.println("creating joiner new");
 			return joiner;
 		}
-		System.out.println("not allowed");
 		throw new Exception("not allowed to join the game.");
 	}
 
@@ -214,7 +210,7 @@ public class Checkers {
 		Map<String, Object> infoFeedback = getInfoFeedback("game restarted");
 		sendMessage(creator.getSession(), Action.INFO.getNumber(), infoFeedback);
 		sendMessage(game.getJoiner().getSession(), Action.INFO.getNumber(), infoFeedback);
-		updatePlay(game);
+		updateGameStatus(game);
 	}
 
 	public static void play(String data, Session session) throws Exception { 
@@ -224,6 +220,14 @@ public class Checkers {
 		Game game = player.getGame();
 		JsonArray plays = parseToJsonArray(data);
 		game.updatePlay(player, plays);
+		Player otherPlayer = player.getOtherPlayer();
+		sendPlayUpdate(otherPlayer, plays);
+	}
+
+	private static void sendPlayUpdate(Player player, JsonArray plays) throws IOException, EncodeException { 
+		Map<String, Object> playFeedback = new HashMap<String, Object>();
+		playFeedback.put("plays", plays.toString());
+		sendMessage(player.getSession(), Action.PLAY.getNumber(), playFeedback); 
 	}
 
 }

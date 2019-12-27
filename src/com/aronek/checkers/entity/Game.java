@@ -214,6 +214,7 @@ public class Game {
 		Checker checker = getCheckerFromJsonPosition(toPosition);
 		Piece piece = checker.getPiece();
 		if (piece.isAtLastRow(getLastRowIndex())) {
+			System.out.println("---is last row---");
 			piece.setType(Piece.Type.KING.getNumber());
 		}
 	}
@@ -233,6 +234,7 @@ public class Game {
 		Checker toChecker = getCheckerFromJsonPosition(toPosition);
 		toChecker.setPiece(fromChecker.getPiece());
 		fromChecker.setPiece(null);
+		toChecker.getPiece().setChecker(toChecker);
 	}
 	
 	private Checker getCheckerFromJsonPosition(JsonObject position) {

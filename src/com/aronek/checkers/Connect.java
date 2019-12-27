@@ -27,6 +27,7 @@ public final class Connect {
     		@PathParam("token") final String token, 
     		final Session session, 
     		EndpointConfig endConfig) throws Exception { 
+//    	session.setMaxIdleTimeout(10 * 60 * 1000);
     	Player player = Checkers.getPlayer(token);
     	if (!playerExists(player)) {
     		createNewToken(session);
@@ -59,7 +60,7 @@ public final class Connect {
 
 	private void sendCurrentBoardStatus(Player player) throws IOException, EncodeException {
 		Map<String, Object> board = Checkers.getPlayFeedback(player.getGame());
-		Checkers.updatePlay(player, board);
+		Checkers.updateStatus(player, board);
 	}
 
 	private boolean playableGameExists(Player player) {
@@ -116,8 +117,11 @@ public final class Connect {
     }
     
     @OnClose
-    public void onClose(final Session session) {
+    public void onClose(final Session session) throws IOException { 
     	System.out.println("closing the connection");
+    	if (session.isOpen()) {
+    		session.close();
+    	}
     }
  
     private static final class RegistrationFailedException extends RuntimeException {
