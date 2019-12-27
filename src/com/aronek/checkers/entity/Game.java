@@ -12,6 +12,7 @@ public class Game {
 	private Player creator;
 	private Player joiner;
 	private Player playerInTurn;
+	private Player winner;
 	private Checker[][] checkers;
 	private Status status;
 	private List<Chat> chats;
@@ -73,6 +74,13 @@ public class Game {
 		this.checkers = checkers;
 	}
 
+	public boolean isGameOver() {
+		return status == Status.OVER;
+	}
+	
+	public Player getWinner() {
+		return winner;
+	}
 
 	public Status getStatus() {
 		return status;
@@ -188,8 +196,15 @@ public class Game {
 	}
 	
 	private void processGameCompleted() {
-		if (!hasPlayablePieces(creator) || !hasPlayablePieces(joiner)) {
+		boolean creatorHasPlayablePieces = hasPlayablePieces(creator);
+		boolean joinerHasPlayablePieces = hasPlayablePieces(joiner);
+		if (!creatorHasPlayablePieces) {
 			status = Status.OVER;
+			winner = joiner;
+		}
+		if (!joinerHasPlayablePieces) {
+			status = Status.OVER;
+			winner = creator;
 		}
 	}
 

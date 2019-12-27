@@ -222,6 +222,17 @@ public class Checkers {
 		game.updatePlay(player, plays);
 		Player otherPlayer = player.getOtherPlayer();
 		sendPlayUpdate(otherPlayer, plays);
+		updateGameOver(game);
+	}
+
+	private static void updateGameOver(Game game) throws IOException, EncodeException { 
+		if (game.isGameOver()) {
+			Player winner = game.getWinner();
+			Map<String, Object> winnerFeedback = new HashMap<String, Object>();
+			winnerFeedback.put("winnerId", winner.getId());
+			sendMessage(game.getCreator().getSession(), Action.OVER.getNumber(), winnerFeedback);
+			sendMessage(game.getJoiner().getSession(), Action.OVER.getNumber(), winnerFeedback);
+		}
 	}
 
 	private static void sendPlayUpdate(Player player, JsonArray plays) throws IOException, EncodeException { 
