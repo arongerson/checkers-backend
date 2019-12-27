@@ -188,28 +188,25 @@ public class Game {
 	}
 	
 	private void processGameCompleted() {
-		if (!hasPieces(creator) || !hasPieces(joiner) || !canPlay(creator) || !canPlay(joiner)) {
+		if (!hasPlayablePieces(creator) || !hasPlayablePieces(joiner)) {
 			status = Status.OVER;
 		}
 	}
 
-	private boolean canPlay(Player player) {
-		return true;
-	}
-
-
-	private boolean hasPieces(Player player) {
+	private boolean hasPlayablePieces(Player player) {
 		for (int i = 0; i < checkers.length; i++) {
 			for (int j = 0; j < checkers[i].length; j++) {
 				Piece piece = checkers[i][j].getPiece();
 				if (piece != null && piece.getOwner() == player) {
-					return true;
+					if (piece.isPiecePlayable(this)) {
+						return true;
+					}
 				}
+				
 			}
 		}
 		return false;
 	}
-
 
 	private void processPlayCompleted(JsonArray plays) {
 		JsonObject lastPlay = plays.get(plays.size() - 1).getAsJsonObject();
@@ -259,6 +256,24 @@ public class Game {
 		if (player != playerInTurn) {
 			throw new Exception("Player not in turn");
 		}
+	}
+
+
+	public Checker getChecker(int row, int col) {
+		if (isWithinBounds(row, col)) {
+			return checkers[row][col];
+		}
+		return null;
+	}
+
+
+	private boolean isWithinBounds(int row, int col) {
+		return indexIsWithinBounds(row) && indexIsWithinBounds(col);
+	}
+
+
+	private boolean indexIsWithinBounds(int index) {
+		return index >= 0 && index <= getLastRowIndex();
 	}
 	
 }

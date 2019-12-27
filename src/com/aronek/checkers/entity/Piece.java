@@ -44,6 +44,19 @@ public class Piece {
 		return false;
 	}
 	
+	public boolean isPiecePlayable(Game game) {
+		int ownerId = owner.getId();
+		if (isKing()) {
+			 return checker.hasEmptyCheckersAround(game, ownerId) || checker.canKingCapture(game, ownerId);
+		} else {
+			return checker.hasEmptyForwardCheckers(game, ownerId) || checker.canOrdinaryCapture(game, ownerId);
+		}
+	}
+	
+	private boolean isKing() {
+		return type == Type.KING.getNumber();
+	}
+	
 	public enum Type {
 		
 		NORMAL(1), KING(2);
