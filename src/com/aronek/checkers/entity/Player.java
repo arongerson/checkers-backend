@@ -23,12 +23,17 @@ public class Player implements Serializable {
 	private transient Session session;
 	private Game game;
 	
+	private String token;
+	
+	private long lastAccsessed;
+	
 	public Player() {}
 	
 	public Player(Session session, String name, int id) {
 		this.session = session;
 		this.name = name;
 		this.id = id;
+		this.updateLastAccessed();
 	}
 	
 	public int getId() {
@@ -37,6 +42,18 @@ public class Player implements Serializable {
 
 	public void setId(int id) {
 		this.id = id;
+	}
+	
+	public void updateLastAccessed() {
+		lastAccsessed = System.currentTimeMillis();
+	}
+	
+	public boolean hasExpired() {
+		long idleTime = System.currentTimeMillis() - lastAccsessed;
+		if (idleTime > 10 * 60 * 1000) {
+			return true;
+		}
+		return false;
 	}
 
 	public String getName() {
@@ -57,6 +74,14 @@ public class Player implements Serializable {
 	
 	public Game getGame() {
 		return game;
+	}
+
+	public String getToken() {
+		return token;
+	}
+
+	public void setToken(String token) {
+		this.token = token;
 	}
 
 	public Player getOtherPlayer() {

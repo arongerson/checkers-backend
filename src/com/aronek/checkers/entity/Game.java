@@ -1,7 +1,11 @@
 package com.aronek.checkers.entity;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+
 import com.aronek.checkers.entity.Piece.Type;
+import com.aronek.checkers.model.CheckerException;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -9,6 +13,9 @@ import com.google.gson.JsonObject;
 public class Game {
 	
 	private long id;
+	private int boardSize;
+	private int joinerPiecesBeginRow;
+	private int numberOfRowsPiecesOccupy;
 	private Player creator;
 	private Player joiner;
 	private Player playerInTurn;
@@ -16,13 +23,28 @@ public class Game {
 	private Checker[][] checkers;
 	private Status status;
 	private List<Chat> chats;
+	private List<String> fromCreatorChats = new ArrayList<String>();
+	private List<String> fromJoinerChats = new ArrayList<String>();
+	private String videoChatUuid;
 	
-	public Game(Player creator, long id) {
+	public Game(Player creator, long id, int boardSize) {
 		this.id = id;
+		this.boardSize = boardSize;
 		this.creator = creator;
 		this.setStatus(Status.NEW);
+		this.setJoinerPiecesBeginRow();
+		this.createVideoChatUuid();
 	}
-
+	
+	private final void setJoinerPiecesBeginRow() {
+		if (boardSize == 8) {
+			joinerPiecesBeginRow = 5;
+			numberOfRowsPiecesOccupy = 3;
+		} else {
+			joinerPiecesBeginRow = 6;
+			numberOfRowsPiecesOccupy = 4;
+		}
+	}
 
 	public long getId() {
 		return id;
@@ -31,6 +53,10 @@ public class Game {
 
 	public void setId(long id) {
 		this.id = id;
+	}
+	
+	public int getBoardSize() {
+		return boardSize;
 	}
 
 
@@ -102,7 +128,7 @@ public class Game {
 	}
 	
 	public int getLastRowIndex() {
-		return checkers.length - 1;
+		return boardSize - 1;
 	}
 	
 	public Player getOtherPlayer(Player player) {
@@ -113,7 +139,7 @@ public class Game {
 	}
 	
 	public enum Status {
-		NEW, READY, STARTED, OVER
+		NEW, READY, STARTED, OVER, TERMINATED 
 	}
 	
 	public void setStarted() {
@@ -124,13 +150,12 @@ public class Game {
 		initCheckers();
 		// creator pieces begin at row 0 of the board
 		initPieces(0, creator);
-		// joiner pieces begin at row 5
-		initPieces(5, joiner);
+		initPieces(joinerPiecesBeginRow, joiner);
 	}
 
 	private void initPieces(int startRow, Player owner) {
-		for (int row = startRow; row < startRow + 3; row++) {
-			for (int col = 0; col < 8; col++) {
+		for (int row = startRow; row < startRow + numberOfRowsPiecesOccupy; row++) {
+			for (int col = 0; col < boardSize; col++) {
 				if ((row + col) % 2 == 1) {
 					Checker checker = checkers[row][col];
 					Piece piece = new Piece(owner);
@@ -143,9 +168,9 @@ public class Game {
 	}
 
 	private void initCheckers() {
-		checkers = new Checker[8][8];
-		for (int i = 0; i < 8; i++) {
-			for (int j = 0; j < 8; j++) {
+		checkers = new Checker[boardSize][boardSize];
+		for (int i = 0; i < boardSize; i++) {
+			for (int j = 0; j < boardSize; j++) {
 				checkers[i][j] = new Checker(i, j);
 			}
 		}
@@ -164,7 +189,7 @@ public class Game {
 
 	public void throwExceptionIfNotStartable() throws Exception { 
 		if (joiner == null || status != Status.OVER) {
-			throw new Exception("not allowed");
+			throw new CheckerException("not allowed");
 		}
 	}
 
@@ -182,7 +207,7 @@ public class Game {
 	
 	private void throwExceptionIfNotPlayable() throws Exception { 
 		if (status != Status.STARTED) {
-			throw new Exception("game not started");
+			throw new CheckerException("game not started");
 		}
 	}
 
@@ -209,8 +234,8 @@ public class Game {
 	}
 
 	private boolean hasPlayablePieces(Player player) {
-		for (int i = 0; i < checkers.length; i++) {
-			for (int j = 0; j < checkers[i].length; j++) {
+		for (int i = 0; i < boardSize; i++) {
+			for (int j = 0; j < boardSize; j++) {
 				Piece piece = checkers[i][j].getPiece();
 				if (piece != null && piece.getOwner() == player) {
 					if (piece.isPiecePlayable(this)) {
@@ -229,7 +254,6 @@ public class Game {
 		Checker checker = getCheckerFromJsonPosition(toPosition);
 		Piece piece = checker.getPiece();
 		if (piece.isAtLastRow(getLastRowIndex())) {
-			System.out.println("---is last row---");
 			piece.setType(Piece.Type.KING.getNumber());
 		}
 	}
@@ -261,7 +285,6 @@ public class Game {
 
 	private void updateCaptured(JsonElement capturedPiecePosition) {
 		if (!capturedPiecePosition.isJsonNull()) {
-			System.out.println(capturedPiecePosition);
 			JsonObject position = capturedPiecePosition.getAsJsonObject();
 			Checker checker = getCheckerFromJsonPosition(position);
 			checker.setPiece(null); 
@@ -271,7 +294,7 @@ public class Game {
 
 	private void throwExceptionIfNotInTurn(Player player) throws Exception {
 		if (player != playerInTurn) {
-			throw new Exception("Player not in turn");
+			throw new CheckerException("Player not in turn");
 		}
 	}
 
@@ -291,6 +314,48 @@ public class Game {
 
 	private boolean indexIsWithinBounds(int index) {
 		return index >= 0 && index <= getLastRowIndex();
+	}
+
+
+	public void throwExceptionIfNotCreator(Player player) throws Exception { 
+		if (player != creator) {
+			throw new CheckerException("You are not allowed");
+		}
+	}
+
+
+	public String getCreatorName() {
+		return creator != null ? creator.getName() : "creator";
+	}
+	
+	public String getJoinerName() {
+		return joiner != null ? joiner.getName() : "joiner";
+	}
+
+
+	public void removePlayer(Player player) {
+		if (player == creator) {
+			creator = null;
+		} else {
+			joiner = null;
+		}
+	}
+	
+	public void addChat(Player player, String text) {
+		if (player.isCreator()) {
+			fromCreatorChats.add(text);
+		} else {
+			fromJoinerChats.add(text);
+		}
+	}
+	
+	private void createVideoChatUuid() {
+		UUID uuid = UUID.randomUUID();
+		videoChatUuid = uuid.toString();
+	}
+	
+	public String getVideoChatUuid() {
+		return videoChatUuid;
 	}
 	
 }

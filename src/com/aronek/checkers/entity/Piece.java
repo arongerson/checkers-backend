@@ -36,7 +36,6 @@ public class Piece {
 	}
 	
 	public boolean isAtLastRow(int lastRowIndex) {
-		System.out.println("owner: " + owner.getId() + ", " + checker.getRow() + ", " + lastRowIndex);
 		if (owner.isCreator() && checker.isLastRow(lastRowIndex)) {
 			return true;
 		} else if (!owner.isCreator() && checker.isFirstRow()) {

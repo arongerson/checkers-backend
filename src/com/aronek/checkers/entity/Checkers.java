@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import javax.websocket.EncodeException;
 import javax.websocket.Session;
@@ -13,6 +15,8 @@ import com.aronek.checkers.Constants;
 import com.aronek.checkers.Message;
 import com.aronek.checkers.entity.Game.Status;
 import com.aronek.checkers.model.Action;
+import com.aronek.checkers.model.CheckerException;
+import com.aronek.checkers.model.GameCleaner;
 import com.aronek.checkers.model.RandomString;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -23,19 +27,32 @@ import com.google.gson.JsonParser;
 public class Checkers {
 	
 	public static final long MAX_NUMBER_OF_GAMES = 1000000L;
+	public static final long INACTIVE_TIME = 10 * 60 * 1000L;
 	public static Map<Long, Game> games = new HashMap<Long, Game>();
-	private static Map<String, Player> players = new HashMap<String, Player>();
+	public static Map<String, Player> players = new HashMap<String, Player>();
 	private static RandomString randomString = new RandomString(32);
 	
 	// the data includes: the name of the player
 	public static void createGame(String data, Session session) throws Exception {
+		JsonObject jsonObject = parseToJsonObject(data);
+		String playerName = jsonObject.get("name").getAsString();
+		int boardSize = jsonObject.get("boardSize").getAsInt();
 		long gameCode = getGameId();
-		Player creator = createPlayer(data, session, Player.CREATOR_ID);
-		Game game = new Game(creator, gameCode);
+		Player creator = createPlayer(playerName, session, Player.CREATOR_ID);
+		Game game = new Game(creator, gameCode, boardSize);
 		games.put(gameCode, game);
 		creator.setGame(game); 
 		Map<String, Object> feedback = getCreateGameFeedback(gameCode);
 		sendMessage(session, Action.CREATE.getNumber(), feedback);
+	}
+	
+	
+	private static Player getAsynchPlayer(String sessionId)  {
+		Player player = players.get(sessionId);
+		if (player != null) {
+			player.updateLastAccessed();
+		}
+		return player;
 	}
 
 	private static void sendMessage(Session session, int code, Map<String, Object> feedback) throws IOException, EncodeException {
@@ -43,9 +60,11 @@ public class Checkers {
 	}
 
 	private static Player createPlayer(String name, Session session, int playerId) {
-		Player creator = new Player(session, name, playerId);
-		players.put(getSessionToken(session), creator);
-		return creator;
+		String token = getSessionToken(session);
+		Player player = new Player(session, name, playerId);
+		player.setToken(token); 
+		players.put(token, player);
+		return player;
 	}
 
 	private static Map<String, Object> getCreateGameFeedback(long gameCode) {
@@ -56,10 +75,8 @@ public class Checkers {
 	}
 	
 	public static void joinGame(String data, Session session) throws Exception { 
-		System.out.println(data);
 		JsonObject jsonObject = parseToJsonObject(data);
 		Game game = getGame(jsonObject);
-		System.out.println("code: " + game.getId());
 		synchronized (game) {
 			// prevent more than one player to join the game 
 			createJoiner(session, jsonObject, game); 
@@ -72,7 +89,7 @@ public class Checkers {
 
 	private static void updateNewGame(Session session, Game game) throws IOException, EncodeException {
 		Map<String, Object> creatorFeedback = getInfoFeedback(String.format("%s has joined the game", game.getJoiner().getName()));
-		sendMessage(game.getCreator().getSession(), Action.INFO.getNumber(), creatorFeedback);
+		sendMessage(game.getCreator().getSession(), Action.ACTION_OTHER_JOINED.getNumber(), creatorFeedback);
 		Map<String, Object> joinerFeedback = new HashMap<String, Object>();
 		joinerFeedback.put("playerId", Player.JOINER_ID);
 		sendMessage(session, Action.JOIN.getNumber(), joinerFeedback);
@@ -86,7 +103,6 @@ public class Checkers {
 	}
 	
 	public static void updateStatus(Player player, Map<String, Object> board) throws IOException, EncodeException {
-		System.out.println("updating the player...");
 		sendMessage(player.getSession(), Action.STATE.getNumber(), board); 
 	}
 
@@ -94,6 +110,11 @@ public class Checkers {
 		Map<String, Object> board = new HashMap<String, Object>();
 		board.put("turn", game.getPlayerInTurn().getId());
 		board.put("checkers", game.getCheckers());
+		board.put("creator", game.getCreatorName());
+		board.put("joiner", game.getJoinerName());
+		board.put("status", game.getStatus());
+		board.put("boardSize", game.getBoardSize());
+		board.put("vchatUuid", game.getVideoChatUuid());
 		return board;
 	}
 
@@ -105,7 +126,7 @@ public class Checkers {
 			game.setStatus(Status.READY);
 			return joiner;
 		}
-		throw new Exception("not allowed to join the game.");
+		throw new CheckerException("not allowed to join the game.");
 	}
 
 	private static JsonObject parseToJsonObject(String data) {
@@ -138,10 +159,11 @@ public class Checkers {
 
 	// synchronized to ensure the id is not generated while the method is running
 	public synchronized static Player getPlayer(String token) throws Exception {
-		return players.get(token);
+		Player player = getAsynchPlayer(token);
+		return player;
 	}
 
-	private static String getSessionToken(Session session) {
+	public static String getSessionToken(Session session) {
 		return (String) session.getUserProperties().get(Constants.TOKEN);
 	}
 
@@ -160,51 +182,55 @@ public class Checkers {
         		return id;
         	}
         }
-        throw new Exception("max games reached, try again later");
+        throw new CheckerException("max games reached, try again later");
     }
 
-	public static void leaveGame(Session session) throws IOException, EncodeException { 
-		String token = getSessionToken(session);
-		Player player = players.get(token);
-		if (player.isCreator()) {
-			deleteGame(player);
-		} else {
-			removeJoinerFromTheGame(player);
+	public static void leaveGame(Session session, String token) throws IOException, EncodeException, CheckerException {  
+		if (token == null) {
+			token = getSessionToken(session);
+		}
+		Player player = getAsynchPlayer(token);
+		throwExceptionIfNoPlayer(player);
+		Game game = player.getGame();
+		synchronized (game) {
+			leaveGame(game, player, token);
+		}
+	}
+	
+	private static void throwExceptionIfNoPlayer(Player player) throws CheckerException { 
+		if (player == null) {
+			throw new CheckerException("No player");
 		}
 	}
 
-	private static void removeJoinerFromTheGame(Player joiner) throws IOException, EncodeException {
-		Game game = joiner.getGame();
-		game.setStatus(Game.Status.NEW);
-		Player creator = game.getCreator();
-		clearSessionAttributes(joiner.getSession());
-		players.remove(getSessionToken(joiner.getSession()));
-		sendMessage(creator.getSession(), Action.INFO.getNumber(), getInfoFeedback(String.format("%s left the game", joiner.getName()))); 
-		sendMessage(joiner.getSession(), Action.INFO.getNumber(), getInfoFeedback("Closing the game"));
-	}
-
-	private static void deleteGame(Player creator) throws IOException, EncodeException {
-		Game game = creator.getGame();
-		Player joiner = game.getJoiner();
-		games.remove(game.getId());
-		clearSessionAttributes(creator.getSession());
-		clearSessionAttributes(joiner.getSession());
-		players.remove(getSessionToken(creator.getSession()));
-		players.remove(getSessionToken(joiner.getSession()));
-		sendMessage(creator.getSession(), Action.INFO.getNumber(), getInfoFeedback("game terminated"));
-		sendMessage(joiner.getSession(), Action.CLOSE.getNumber(), getInfoFeedback("game terminated by the creator"));
-	}
-
-	private static void clearSessionAttributes(Session session) {
-		session.getUserProperties().remove(Constants.PLAYER);
-		session.getUserProperties().remove(Constants.TOKEN);
+	private static void leaveGame(Game game, Player player, String token) throws IOException, EncodeException {
+		game.setStatus(Game.Status.TERMINATED);
+		Player other = game.getOtherPlayer(player); 
+		players.remove(token);
+		sendMessage(player.getSession(), Action.CLOSE.getNumber(), getInfoFeedback("you left the game"));
+		if (other != null) {
+			sendMessage(other.getSession(), Action.OTHER_CLOSE.getNumber(), getInfoFeedback(player.getName() + " left the game"));
+		} else {
+			games.remove(game.getId());
+		}
+		game.removePlayer(player);
+		player.getSession().close();
+		System.out.println("play removed completely");
 	}
 
 	public static void restartGame(Session session) throws Exception {
 		String token = getSessionToken(session);
-		Player creator = players.get(token);
+		Player creator = getAsynchPlayer(token);
+		throwExceptionIfNoPlayer(creator);
 		Game game = creator.getGame();
+		synchronized (game) {
+			restartGame(game, creator);
+		}
+	}
+
+	private static void restartGame(Game game, Player creator) throws Exception { 
 		game.throwExceptionIfNotStartable();
+		game.throwExceptionIfNotCreator(creator);
 		game.initBoard();
 		game.setStarted();
 		Map<String, Object> infoFeedback = getInfoFeedback("game restarted");
@@ -214,10 +240,15 @@ public class Checkers {
 	}
 
 	public static void play(String data, Session session) throws Exception { 
-		System.out.println("playing...");
 		String token = getSessionToken(session);
-		Player player = players.get(token);
+		Player player = getAsynchPlayer(token);
 		Game game = player.getGame();
+		synchronized(game) {
+			play(game, player, data);
+		}
+	}
+
+	private static void play(Game game, Player player, String data) throws Exception {  
 		JsonArray plays = parseToJsonArray(data);
 		game.updatePlay(player, plays);
 		Player otherPlayer = player.getOtherPlayer();
@@ -239,6 +270,63 @@ public class Checkers {
 		Map<String, Object> playFeedback = new HashMap<String, Object>();
 		playFeedback.put("plays", plays.toString());
 		sendMessage(player.getSession(), Action.PLAY.getNumber(), playFeedback); 
+	}
+
+	public static void getGameState(Session session) throws IOException, EncodeException { 
+		String token = getSessionToken(session);
+		Player player = getAsynchPlayer(token);
+		if (player != null) {
+			Game game = player.getGame();
+			synchronized (game) {
+				if (!game.isNew()) {
+					Map<String, Object> board = Checkers.getPlayFeedback(player.getGame());
+					updateStatus(player, board);
+				}
+			}
+		}
+	}
+
+	public static void chat(String text, Session session) throws IOException, EncodeException { 
+		String token = getSessionToken(session);
+		Player player = getAsynchPlayer(token);
+		Game game = player.getGame();
+		game.addChat(player, text);
+		Player receiver = player.getOtherPlayer();
+		synchronized(game) {
+			chat(player, receiver, text);
+		}
+	}
+	
+	private static void chat(Player player, Player receiver, String text) throws IOException, EncodeException { 
+		if (receiver != null && receiver.getSession().isOpen()) {
+			Map<String, Object> feedback = new HashMap<String, Object>();
+			feedback.put("chat", text);
+			sendMessage(receiver.getSession(), Action.CHAT.getNumber(), feedback);
+		} else {
+			Map<String, Object> feedback = new HashMap<String, Object>();
+			feedback.put("chat", "***Your opponent is not available***");
+			sendMessage(player.getSession(), Action.CHAT.getNumber(), feedback);
+		}
+	}
+
+
+	public static void cleanUpGame(Session session) throws InterruptedException {
+		String token = Checkers.getSessionToken(session);
+		Player player = getAsynchPlayer(token);
+		if (player == null) {
+			return;
+		}
+		// creating an instance of timer class 
+        Timer timer = new Timer();  
+        // creating an instance of task to be scheduled 
+        TimerTask task = new GameCleaner(player, token); 
+        // scheduling the timer instance 
+        timer.schedule(task, 5 * 1000);
+        synchronized(player) {
+        	player.wait();
+        }
+        task.cancel();
+    	timer.cancel();
 	}
 
 }

@@ -14,24 +14,31 @@ import javax.websocket.Session;
 import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 
+import org.apache.log4j.Logger;
+
 import com.aronek.checkers.entity.Checkers;
 import com.aronek.checkers.entity.Game;
 import com.aronek.checkers.entity.Player;
 import com.aronek.checkers.model.Action;
+import com.aronek.checkers.model.CheckerException;
 
 @ServerEndpoint(value = "/connect/{token}", encoders = MessageEncoder.class, decoders = MessageDecoder.class)
 public final class Connect {
+	
+	private static org.apache.log4j.Logger log = Logger.getLogger(Connect.class);
     
     @OnOpen
     public void onOpen(
     		@PathParam("token") final String token, 
     		final Session session, 
     		EndpointConfig endConfig) throws Exception { 
-//    	session.setMaxIdleTimeout(10 * 60 * 1000);
     	Player player = Checkers.getPlayer(token);
+    	session.setMaxIdleTimeout(10* 60 * 1000);
     	if (!playerExists(player)) {
     		createNewToken(session);
+    		log.info(String.format("new connection from"));
     	} else {
+    		log.info(String.format("the player reconnected."));
     		updateSessionWithPreviousToken(token, session, player);
     	}
     }
@@ -40,11 +47,13 @@ public final class Connect {
 			throws IOException, EncodeException {
 		updateSession(token, session, player);
 		if (playableGameExists(player)) {
-			sendCurrentBoardStatus(player);
 			notifyTheOtherPlayer(player);
 		} else {
 			inviteThePlayerBack(session);
 		}
+		if (player.getGame() != null) {
+    		sendCurrentBoardStatus(player);
+    	}
 	}
 
 	private void inviteThePlayerBack(final Session session) throws IOException, EncodeException {
@@ -64,13 +73,15 @@ public final class Connect {
 	}
 
 	private boolean playableGameExists(Player player) {
-		return player.getGame() != null && player.getGame().getStatus() != Game.Status.NEW;
+		Game.Status status = player.getGame().getStatus();
+		return player.getGame() != null && status != Game.Status.NEW && status != Game.Status.TERMINATED;
 	}
 
 	private void updateSession(final String token, final Session session, Player player) {
 		session.getUserProperties().put(Constants.TOKEN, token);
 		session.getUserProperties().put(Constants.PLAYER, player);
 		player.setSession(session);
+		System.out.println("new session set");
 	}
 
 	private void createNewToken(final Session session) throws Exception, IOException, EncodeException {
@@ -86,42 +97,54 @@ public final class Connect {
     @OnError
     public void onError(final Session session, final Throwable throwable) {
         if (throwable instanceof RegistrationFailedException) {
-        	System.out.println("We have an error");
             CheckersSessionManager.close(session, CloseCodes.VIOLATED_POLICY, throwable.getMessage());
         } else {
-        	System.out.println("We have an error: " + throwable.getMessage());
-        	throwable.printStackTrace();
+        	log.fatal(String.format("websocket error inside onError: %s", throwable.getMessage()));
         }
     }
  
     @OnMessage
     public void onMessage(final Message message, final Session session) throws Exception { 
+    	try {
+    		processMessage(message, session);
+    	} catch(CheckerException exception) {
+    		exception.printStackTrace();
+    		log.fatal(String.format("websocket error inside onMessage: %s", exception.getMessage())); 
+    	}
+    }
+    
+    private void processMessage(Message message, Session session) throws Exception { 
     	int code = message.getCode();
         if (code == Action.CREATE.getNumber()) {
         	Checkers.createGame(message.getData(), session);
+        	log.info(String.format("game created"));
         } else if (code == Action.JOIN.getNumber()) {
         	Checkers.joinGame(message.getData(), session);
+        	log.info(String.format("game joined"));
+        } else if (code == Action.STATE.getNumber()) {
+        	Checkers.getGameState(session);
         } else if (code == Action.REGISTER.getNumber()) {
         } else if (code == Action.LOGIN.getNumber()) {
         } else if (code == Action.CHAT.getNumber()) {
+        	Checkers.chat(message.getData(), session);
         } else if (code == Action.PLAY.getNumber()) {
         	Checkers.play(message.getData(), session);
         } else if (code == Action.LEAVE.getNumber()) {
-        	Checkers.leaveGame(session);
+        	Checkers.leaveGame(session, null);
         } else if (code == Action.RESTART.getNumber()) {
         	Checkers.restartGame(session);
         } else if (code == Action.CONNECT.getNumber()) {
         } else {
         	CheckersSessionManager.publish(new Message(Action.ERROR.getNumber(), "invalid code"), session);
         }
-    }
-    
-    @OnClose
-    public void onClose(final Session session) throws IOException { 
-    	System.out.println("closing the connection");
-    	if (session.isOpen()) {
-    		session.close();
-    	}
+	}
+
+	@OnClose
+    public void onClose(final Session session) throws IOException, InterruptedException {  
+    	session.close();
+		log.info(String.format("session closed"));
+		Checkers.cleanUpGame(session);
+		System.out.println("session closed: " + Checkers.getSessionToken(session));
     }
  
     private static final class RegistrationFailedException extends RuntimeException {
