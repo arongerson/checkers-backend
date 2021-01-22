@@ -199,6 +199,10 @@ public class Game {
 	public boolean isReady() { 
 		return status == Status.READY;
 	}
+	
+	public boolean isStarted() {
+		return status == Status.STARTED;
+	}
 
 	public void throwExceptionIfNotStartable() throws Exception { 
 		if (joiner == null || status != Status.OVER) {

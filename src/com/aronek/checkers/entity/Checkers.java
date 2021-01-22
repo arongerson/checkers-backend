@@ -258,7 +258,9 @@ public class Checkers {
 		Player player = getAsyncPlayer(token);
 		Game game = player.getGame();
 		synchronized (game) {
-			play(game, player, data);
+			if (game.isStarted()) {
+				play(game, player, data);
+			}
 		}
 	}
 
