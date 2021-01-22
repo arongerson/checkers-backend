@@ -323,6 +323,35 @@ public class Checkers {
 		}
 	}
 
+	public static void updateRule(String data, Session session) throws IOException, EncodeException { 
+		String token = getSessionToken(session);
+		Player player = getAsyncPlayer(token);
+		Game game = player.getGame();
+		if (player.isCreator()) {
+			JsonObject rulesObject = parseToJsonObject(data);
+			Rules rules = createRules(rulesObject);
+			game.setRules(rules);
+			Player otherPlayer = game.getOtherPlayer(player);
+			Map<String, Object> feedback = new HashMap<String, Object>();
+			feedback.put("rules", rules);
+			sendMessage(otherPlayer.getSession(), Action.UPDATE_RULE.getNumber(), feedback);
+		}
+	}
+
+	public static void acceptGame(Session session) throws IOException, EncodeException {
+		String token = getSessionToken(session);
+		Player player = getAsyncPlayer(token);
+		Game game = player.getGame();
+		synchronized (game) {
+			if (!player.isCreator() && game.isReady()) {
+				game.initBoard();
+				game.setStarted();
+				game.setPlayerInTurn(game.getJoiner());
+				updateGameStatus(game);
+			}
+		}
+	}
+	
 	public static void cleanUpGame(Session session) throws InterruptedException {
 		String token = Checkers.getSessionToken(session);
 		Player player = getAsyncPlayer(token);
@@ -340,24 +369,6 @@ public class Checkers {
 		}
 		task.cancel();
 		timer.cancel();
-	}
-
-	public static void updateRule(Session session) {
-
-	}
-
-	public static void acceptGame(Session session) throws IOException, EncodeException {
-		String token = getSessionToken(session);
-		Player player = getAsyncPlayer(token);
-		Game game = player.getGame();
-		synchronized (game) {
-			if (!player.isCreator() && game.isReady()) {
-				game.initBoard();
-				game.setStarted();
-				game.setPlayerInTurn(game.getJoiner());
-				updateGameStatus(game);
-			}
-		}
 	}
 
 }

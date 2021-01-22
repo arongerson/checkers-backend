@@ -135,7 +135,7 @@ public final class Connect {
         	Checkers.restartGame(session);
         } else if (code == Action.CONNECT.getNumber()) {
         } else if (code == Action.UPDATE_RULE.getNumber()) {
-        	Checkers.updateRule(session);
+        	Checkers.updateRule(message.getData(), session);
         } else if (code == Action.ACCEPT.getNumber()) {
         	Checkers.acceptGame(session);
         } else {
