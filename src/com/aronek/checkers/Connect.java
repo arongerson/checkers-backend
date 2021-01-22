@@ -134,6 +134,10 @@ public final class Connect {
         } else if (code == Action.RESTART.getNumber()) {
         	Checkers.restartGame(session);
         } else if (code == Action.CONNECT.getNumber()) {
+        } else if (code == Action.UPDATE_RULE.getNumber()) {
+        	Checkers.updateRule(session);
+        } else if (code == Action.ACCEPT.getNumber()) {
+        	Checkers.acceptGame(session);
         } else {
         	CheckersSessionManager.publish(new Message(Action.ERROR.getNumber(), "invalid code"), session);
         }

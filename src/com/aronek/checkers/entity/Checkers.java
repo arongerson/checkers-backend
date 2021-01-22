@@ -342,4 +342,12 @@ public class Checkers {
     	timer.cancel();
 	}
 
+	public static void updateRule(Session session) {
+		
+	}
+
+	public static void acceptGame(Session session) {
+		
+	}
+
 }
