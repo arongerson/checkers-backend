@@ -25,13 +25,13 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 public class Checkers {
-	
+
 	public static final long MAX_NUMBER_OF_GAMES = 1000000L;
 	public static final long INACTIVE_TIME = 10 * 60 * 1000L;
 	public static Map<Long, Game> games = new HashMap<Long, Game>();
 	public static Map<String, Player> players = new HashMap<String, Player>();
 	private static RandomString randomString = new RandomString(32);
-	
+
 	// the data includes: the name of the player
 	public static void createGame(String data, Session session) throws Exception {
 		JsonObject jsonObject = parseToJsonObject(data);
@@ -41,25 +41,26 @@ public class Checkers {
 		Rules rules = createRules(rulesObject);
 		long gameCode = getGameId();
 		Player creator = createPlayer(playerName, session, Player.CREATOR_ID);
-		Game game = new Game(creator, gameCode, boardSize, rules); 
+		Game game = new Game(creator, gameCode, boardSize, rules);
 		games.put(gameCode, game);
-		creator.setGame(game); 
+		creator.setGame(game);
 		Map<String, Object> feedback = getCreateGameFeedback(gameCode, rules);
 		sendMessage(session, Action.CREATE.getNumber(), feedback);
 	}
-	
+
 	private static Rules createRules(JsonObject rulesObject) {
 		Rules rules = new Rules();
 		rules.canPieceCaptureBackwards = rulesObject.get("canKingMoveMoreThanOneStep").getAsBoolean();
 		rules.canKingMoveMoreThanOneStep = rulesObject.get("canKingMoveMoreThanOneStep").getAsBoolean();
-		rules.shouldPieceContinueCapturingAfterFarthestRow = rulesObject.get("canKingMoveMoreThanOneStep").getAsBoolean();
+		rules.shouldPieceContinueCapturingAfterFarthestRow = rulesObject.get("canKingMoveMoreThanOneStep")
+				.getAsBoolean();
 		rules.shouldCaptureWhenPossible = rulesObject.get("canKingMoveMoreThanOneStep").getAsBoolean();
 		rules.shouldCaptureMaxPossible = rulesObject.get("canKingMoveMoreThanOneStep").getAsBoolean();
 		rules.shouldDiscardCapturedPieceMomentarily = rulesObject.get("canKingMoveMoreThanOneStep").getAsBoolean();
 		return rules;
 	}
-	
-	private static Player getAsynchPlayer(String sessionId)  {
+
+	private static Player getAsyncPlayer(String sessionId) {
 		Player player = players.get(sessionId);
 		if (player != null) {
 			player.updateLastAccessed();
@@ -67,14 +68,15 @@ public class Checkers {
 		return player;
 	}
 
-	private static void sendMessage(Session session, int code, Map<String, Object> feedback) throws IOException, EncodeException {
+	private static void sendMessage(Session session, int code, Map<String, Object> feedback)
+			throws IOException, EncodeException {
 		CheckersSessionManager.publish(getMessage(code, feedback), session);
 	}
 
 	private static Player createPlayer(String name, Session session, int playerId) {
 		String token = getSessionToken(session);
 		Player player = new Player(session, name, playerId);
-		player.setToken(token); 
+		player.setToken(token);
 		players.put(token, player);
 		return player;
 	}
@@ -86,27 +88,24 @@ public class Checkers {
 		feedback.put("rules", rules);
 		return feedback;
 	}
-	
-	public static void joinGame(String data, Session session) throws Exception { 
+
+	public static void joinGame(String data, Session session) throws Exception {
 		JsonObject jsonObject = parseToJsonObject(data);
 		Game game = getGame(jsonObject);
 		synchronized (game) {
-			// prevent more than one player to join the game 
-			createJoiner(session, jsonObject, game); 
+			// prevent more than one player to join the game
+			createJoiner(session, jsonObject, game);
+			updateNewGame(session, game);
 		}
-		game.initBoard();
-		game.setStarted();
-		game.setPlayerInTurn(game.getJoiner()); 
-		updateNewGame(session, game);
 	}
 
 	private static void updateNewGame(Session session, Game game) throws IOException, EncodeException {
-		Map<String, Object> creatorFeedback = getInfoFeedback(String.format("%s has joined the game", game.getJoiner().getName()));
+		Map<String, Object> creatorFeedback = getInfoFeedback(game, 
+				String.format("%s has joined the game", game.getJoiner().getName()));
 		sendMessage(game.getCreator().getSession(), Action.ACTION_OTHER_JOINED.getNumber(), creatorFeedback);
 		Map<String, Object> joinerFeedback = new HashMap<String, Object>();
 		joinerFeedback.put("playerId", Player.JOINER_ID);
 		sendMessage(session, Action.JOIN.getNumber(), joinerFeedback);
-		updateGameStatus(game);
 	}
 
 	private static void updateGameStatus(Game game) throws IOException, EncodeException {
@@ -114,9 +113,9 @@ public class Checkers {
 		updateStatus(game.getCreator(), board);
 		updateStatus(game.getJoiner(), board);
 	}
-	
+
 	public static void updateStatus(Player player, Map<String, Object> board) throws IOException, EncodeException {
-		sendMessage(player.getSession(), Action.STATE.getNumber(), board); 
+		sendMessage(player.getSession(), Action.STATE.getNumber(), board);
 	}
 
 	public static Map<String, Object> getPlayFeedback(Game game) {
@@ -128,10 +127,11 @@ public class Checkers {
 		board.put("status", game.getStatus());
 		board.put("boardSize", game.getBoardSize());
 		board.put("vchatUuid", game.getVideoChatUuid());
+		board.put("rules", game.getRules());
 		return board;
 	}
 
-	private static Player createJoiner(Session session, JsonObject jsonObject, Game game) throws Exception { 
+	private static Player createJoiner(Session session, JsonObject jsonObject, Game game) throws Exception {
 		if (game.isNew()) {
 			String playerName = jsonObject.get("name").getAsString();
 			Player joiner = createPlayer(playerName, session, Player.JOINER_ID);
@@ -145,7 +145,7 @@ public class Checkers {
 	private static JsonObject parseToJsonObject(String data) {
 		return JsonParser.parseString(data).getAsJsonObject();
 	}
-	
+
 	private static JsonArray parseToJsonArray(String data) {
 		return JsonParser.parseString(data).getAsJsonArray();
 	}
@@ -157,22 +157,22 @@ public class Checkers {
 		return game;
 	}
 
-	private static Map<String, Object> getInfoFeedback(String message) {
+	private static Map<String, Object> getInfoFeedback(Game game, String message) {
 		Map<String, Object> creatorFeedback = new HashMap<String, Object>();
 		creatorFeedback.put("info", message);
+		creatorFeedback.put("rules", game.getRules());
+		creatorFeedback.put("vchatUuid", game.getVideoChatUuid());
 		return creatorFeedback;
 	}
-	
+
 	private static Message getMessage(int code, Object data) {
-		Gson gson = new GsonBuilder()
-				  .excludeFieldsWithoutExposeAnnotation()
-				  .create();
+		Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
 		return new Message(code, gson.toJson(data));
 	}
 
 	// synchronized to ensure the id is not generated while the method is running
 	public synchronized static Player getPlayer(String token) throws Exception {
-		Player player = getAsynchPlayer(token);
+		Player player = getAsyncPlayer(token);
 		return player;
 	}
 
@@ -188,29 +188,29 @@ public class Checkers {
 			}
 		}
 	}
-	
-	public synchronized static long getGameId() throws Exception { 
-        for (long id = 0; id < MAX_NUMBER_OF_GAMES; id++) {
-        	if (!games.containsKey(id)) {
-        		return id;
-        	}
-        }
-        throw new CheckerException("max games reached, try again later");
-    }
 
-	public static void leaveGame(Session session, String token) throws IOException, EncodeException, CheckerException {  
+	public synchronized static long getGameId() throws Exception {
+		for (long id = 0; id < MAX_NUMBER_OF_GAMES; id++) {
+			if (!games.containsKey(id)) {
+				return id;
+			}
+		}
+		throw new CheckerException("max games reached, try again later");
+	}
+
+	public static void leaveGame(Session session, String token) throws IOException, EncodeException, CheckerException {
 		if (token == null) {
 			token = getSessionToken(session);
 		}
-		Player player = getAsynchPlayer(token);
+		Player player = getAsyncPlayer(token);
 		throwExceptionIfNoPlayer(player);
 		Game game = player.getGame();
 		synchronized (game) {
 			leaveGame(game, player, token);
 		}
 	}
-	
-	private static void throwExceptionIfNoPlayer(Player player) throws CheckerException { 
+
+	private static void throwExceptionIfNoPlayer(Player player) throws CheckerException {
 		if (player == null) {
 			throw new CheckerException("No player");
 		}
@@ -218,11 +218,12 @@ public class Checkers {
 
 	private static void leaveGame(Game game, Player player, String token) throws IOException, EncodeException {
 		game.setStatus(Game.Status.TERMINATED);
-		Player other = game.getOtherPlayer(player); 
+		Player other = game.getOtherPlayer(player);
 		players.remove(token);
-		sendMessage(player.getSession(), Action.CLOSE.getNumber(), getInfoFeedback("you left the game"));
+		sendMessage(player.getSession(), Action.CLOSE.getNumber(), getInfoFeedback(game, "you left the game"));
 		if (other != null) {
-			sendMessage(other.getSession(), Action.OTHER_CLOSE.getNumber(), getInfoFeedback(player.getName() + " left the game"));
+			sendMessage(other.getSession(), Action.OTHER_CLOSE.getNumber(),
+					getInfoFeedback(game, player.getName() + " left the game"));
 		} else {
 			games.remove(game.getId());
 		}
@@ -233,7 +234,7 @@ public class Checkers {
 
 	public static void restartGame(Session session) throws Exception {
 		String token = getSessionToken(session);
-		Player creator = getAsynchPlayer(token);
+		Player creator = getAsyncPlayer(token);
 		throwExceptionIfNoPlayer(creator);
 		Game game = creator.getGame();
 		synchronized (game) {
@@ -241,27 +242,27 @@ public class Checkers {
 		}
 	}
 
-	private static void restartGame(Game game, Player creator) throws Exception { 
+	private static void restartGame(Game game, Player creator) throws Exception {
 		game.throwExceptionIfNotStartable();
 		game.throwExceptionIfNotCreator(creator);
 		game.initBoard();
 		game.setStarted();
-		Map<String, Object> infoFeedback = getInfoFeedback("game restarted");
+		Map<String, Object> infoFeedback = getInfoFeedback(game, "game restarted");
 		sendMessage(creator.getSession(), Action.INFO.getNumber(), infoFeedback);
 		sendMessage(game.getJoiner().getSession(), Action.INFO.getNumber(), infoFeedback);
 		updateGameStatus(game);
 	}
 
-	public static void play(String data, Session session) throws Exception { 
+	public static void play(String data, Session session) throws Exception {
 		String token = getSessionToken(session);
-		Player player = getAsynchPlayer(token);
+		Player player = getAsyncPlayer(token);
 		Game game = player.getGame();
-		synchronized(game) {
+		synchronized (game) {
 			play(game, player, data);
 		}
 	}
 
-	private static void play(Game game, Player player, String data) throws Exception {  
+	private static void play(Game game, Player player, String data) throws Exception {
 		JsonArray plays = parseToJsonArray(data);
 		game.updatePlay(player, plays);
 		Player otherPlayer = player.getOtherPlayer();
@@ -269,7 +270,7 @@ public class Checkers {
 		updateGameOver(game);
 	}
 
-	private static void updateGameOver(Game game) throws IOException, EncodeException { 
+	private static void updateGameOver(Game game) throws IOException, EncodeException {
 		if (game.isGameOver()) {
 			Player winner = game.getWinner();
 			Map<String, Object> winnerFeedback = new HashMap<String, Object>();
@@ -279,15 +280,15 @@ public class Checkers {
 		}
 	}
 
-	private static void sendPlayUpdate(Player player, JsonArray plays) throws IOException, EncodeException { 
+	private static void sendPlayUpdate(Player player, JsonArray plays) throws IOException, EncodeException {
 		Map<String, Object> playFeedback = new HashMap<String, Object>();
 		playFeedback.put("plays", plays.toString());
-		sendMessage(player.getSession(), Action.PLAY.getNumber(), playFeedback); 
+		sendMessage(player.getSession(), Action.PLAY.getNumber(), playFeedback);
 	}
 
-	public static void getGameState(Session session) throws IOException, EncodeException { 
+	public static void getGameState(Session session) throws IOException, EncodeException {
 		String token = getSessionToken(session);
-		Player player = getAsynchPlayer(token);
+		Player player = getAsyncPlayer(token);
 		if (player != null) {
 			Game game = player.getGame();
 			synchronized (game) {
@@ -299,18 +300,18 @@ public class Checkers {
 		}
 	}
 
-	public static void chat(String text, Session session) throws IOException, EncodeException { 
+	public static void chat(String text, Session session) throws IOException, EncodeException {
 		String token = getSessionToken(session);
-		Player player = getAsynchPlayer(token);
+		Player player = getAsyncPlayer(token);
 		Game game = player.getGame();
 		game.addChat(player, text);
 		Player receiver = player.getOtherPlayer();
-		synchronized(game) {
+		synchronized (game) {
 			chat(player, receiver, text);
 		}
 	}
-	
-	private static void chat(Player player, Player receiver, String text) throws IOException, EncodeException { 
+
+	private static void chat(Player player, Player receiver, String text) throws IOException, EncodeException {
 		if (receiver != null && receiver.getSession().isOpen()) {
 			Map<String, Object> feedback = new HashMap<String, Object>();
 			feedback.put("chat", text);
@@ -322,32 +323,41 @@ public class Checkers {
 		}
 	}
 
-
 	public static void cleanUpGame(Session session) throws InterruptedException {
 		String token = Checkers.getSessionToken(session);
-		Player player = getAsynchPlayer(token);
+		Player player = getAsyncPlayer(token);
 		if (player == null) {
 			return;
 		}
-		// creating an instance of timer class 
-        Timer timer = new Timer();  
-        // creating an instance of task to be scheduled 
-        TimerTask task = new GameCleaner(player, token); 
-        // scheduling the timer instance 
-        timer.schedule(task, 5 * 1000);
-        synchronized(player) {
-        	player.wait();
-        }
-        task.cancel();
-    	timer.cancel();
+		// creating an instance of timer class
+		Timer timer = new Timer();
+		// creating an instance of task to be scheduled
+		TimerTask task = new GameCleaner(player, token);
+		// scheduling the timer instance
+		timer.schedule(task, 5 * 1000);
+		synchronized (player) {
+			player.wait();
+		}
+		task.cancel();
+		timer.cancel();
 	}
 
 	public static void updateRule(Session session) {
-		
+
 	}
 
-	public static void acceptGame(Session session) {
-		
+	public static void acceptGame(Session session) throws IOException, EncodeException {
+		String token = getSessionToken(session);
+		Player player = getAsyncPlayer(token);
+		Game game = player.getGame();
+		synchronized (game) {
+			if (!player.isCreator() && game.isReady()) {
+				game.initBoard();
+				game.setStarted();
+				game.setPlayerInTurn(game.getJoiner());
+				updateGameStatus(game);
+			}
+		}
 	}
 
 }
