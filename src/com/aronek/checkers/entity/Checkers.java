@@ -41,10 +41,10 @@ public class Checkers {
 		Rules rules = createRules(rulesObject);
 		long gameCode = getGameId();
 		Player creator = createPlayer(playerName, session, Player.CREATOR_ID);
-		Game game = new Game(creator, gameCode, boardSize);
+		Game game = new Game(creator, gameCode, boardSize, rules); 
 		games.put(gameCode, game);
 		creator.setGame(game); 
-		Map<String, Object> feedback = getCreateGameFeedback(gameCode);
+		Map<String, Object> feedback = getCreateGameFeedback(gameCode, rules);
 		sendMessage(session, Action.CREATE.getNumber(), feedback);
 	}
 	
@@ -79,10 +79,11 @@ public class Checkers {
 		return player;
 	}
 
-	private static Map<String, Object> getCreateGameFeedback(long gameCode) {
+	private static Map<String, Object> getCreateGameFeedback(long gameCode, Rules rules) {
 		Map<String, Object> feedback = new HashMap<String, Object>();
 		feedback.put("gameCode", gameCode);
 		feedback.put("playerId", Player.CREATOR_ID);
+		feedback.put("rules", rules);
 		return feedback;
 	}
 	
