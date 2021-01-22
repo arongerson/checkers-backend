@@ -26,14 +26,16 @@ public class Game {
 	private List<String> fromCreatorChats = new ArrayList<String>();
 	private List<String> fromJoinerChats = new ArrayList<String>();
 	private String videoChatUuid;
+	private Rules rules;
 	
-	public Game(Player creator, long id, int boardSize) {
+	public Game(Player creator, long id, int boardSize, Rules rules) {
 		this.id = id;
 		this.boardSize = boardSize;
 		this.creator = creator;
 		this.setStatus(Status.NEW);
 		this.setJoinerPiecesBeginRow();
 		this.createVideoChatUuid();
+		this.rules = rules;
 	}
 	
 	private final void setJoinerPiecesBeginRow() {
@@ -125,6 +127,14 @@ public class Game {
 
 	public void setChats(List<Chat> chats) {
 		this.chats = chats;
+	}
+	
+	public void setRules(Rules rules) {
+		this.rules = rules;
+	}
+	
+	public Rules getRules() {
+		return rules;
 	}
 	
 	public int getLastRowIndex() {

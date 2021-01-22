@@ -37,6 +37,8 @@ public class Checkers {
 		JsonObject jsonObject = parseToJsonObject(data);
 		String playerName = jsonObject.get("name").getAsString();
 		int boardSize = jsonObject.get("boardSize").getAsInt();
+		JsonObject rulesObject = jsonObject.get("rules").getAsJsonObject();
+		Rules rules = createRules(rulesObject);
 		long gameCode = getGameId();
 		Player creator = createPlayer(playerName, session, Player.CREATOR_ID);
 		Game game = new Game(creator, gameCode, boardSize);
@@ -46,6 +48,16 @@ public class Checkers {
 		sendMessage(session, Action.CREATE.getNumber(), feedback);
 	}
 	
+	private static Rules createRules(JsonObject rulesObject) {
+		Rules rules = new Rules();
+		rules.canPieceCaptureBackwards = rulesObject.get("canKingMoveMoreThanOneStep").getAsBoolean();
+		rules.canKingMoveMoreThanOneStep = rulesObject.get("canKingMoveMoreThanOneStep").getAsBoolean();
+		rules.shouldPieceContinueCapturingAfterFarthestRow = rulesObject.get("canKingMoveMoreThanOneStep").getAsBoolean();
+		rules.shouldCaptureWhenPossible = rulesObject.get("canKingMoveMoreThanOneStep").getAsBoolean();
+		rules.shouldCaptureMaxPossible = rulesObject.get("canKingMoveMoreThanOneStep").getAsBoolean();
+		rules.shouldDiscardCapturedPieceMomentarily = rulesObject.get("canKingMoveMoreThanOneStep").getAsBoolean();
+		return rules;
+	}
 	
 	private static Player getAsynchPlayer(String sessionId)  {
 		Player player = players.get(sessionId);
