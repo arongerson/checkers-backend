@@ -44,7 +44,7 @@ public class Checkers {
 		Game game = new Game(creator, gameCode, boardSize, rules);
 		games.put(gameCode, game);
 		creator.setGame(game);
-		Map<String, Object> feedback = getCreateGameFeedback(gameCode, rules);
+		Map<String, Object> feedback = getCreateGameFeedback(gameCode, boardSize, rules);
 		sendMessage(session, Action.CREATE.getNumber(), feedback);
 	}
 
@@ -81,9 +81,10 @@ public class Checkers {
 		return player;
 	}
 
-	private static Map<String, Object> getCreateGameFeedback(long gameCode, Rules rules) {
+	private static Map<String, Object> getCreateGameFeedback(long gameCode, int boardSize, Rules rules) {
 		Map<String, Object> feedback = new HashMap<String, Object>();
 		feedback.put("gameCode", gameCode);
+		feedback.put("boardSize", boardSize);
 		feedback.put("playerId", Player.CREATOR_ID);
 		feedback.put("rules", rules);
 		return feedback;
@@ -105,6 +106,9 @@ public class Checkers {
 		sendMessage(game.getCreator().getSession(), Action.ACTION_OTHER_JOINED.getNumber(), creatorFeedback);
 		Map<String, Object> joinerFeedback = new HashMap<String, Object>();
 		joinerFeedback.put("playerId", Player.JOINER_ID);
+		joinerFeedback.put("boardSize", game.getBoardSize());
+		joinerFeedback.put("rules", game.getRules());
+		joinerFeedback.put("creator", game.getCreator().getName());
 		sendMessage(session, Action.JOIN.getNumber(), joinerFeedback);
 	}
 
@@ -167,6 +171,8 @@ public class Checkers {
 
 	private static Message getMessage(int code, Object data) {
 		Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+		String json = gson.toJson(data);
+		System.out.println(json);
 		return new Message(code, gson.toJson(data));
 	}
 
